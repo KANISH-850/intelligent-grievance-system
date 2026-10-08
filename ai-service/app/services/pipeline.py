@@ -40,12 +40,15 @@ class AnalysisPipeline:
         )
         translated_text = trans_result["translated_text"]
 
-        # 4. Grievance Classification (ML / Transformer Pipeline with Fallback)
+        # 4. Grievance Classification (TF-IDF + Logistic Regression with Fallback & Explainability)
         class_result = ml_grievance_classifier.classify(translated_text)
         category = class_result["category"]
         category_confidence = class_result["category_confidence"]
-        classification_method = class_result.get("classification_method", "ml_transformer_pipeline")
+        classification_method = class_result.get("classification_method", "tfidf_logistic_regression")
         model_used = class_result.get("model_used", "tfidf-logistic-regression")
+        confidence_level = class_result.get("confidence_level", "HIGH")
+        ai_review_required = class_result.get("ai_review_required", False)
+        explanation = class_result.get("explanation", {"method": "tfidf_feature_contribution", "top_terms": []})
 
         # 5. Hybrid Priority Prediction
         prio_result = ml_priority_predictor.predict_priority(translated_text, category)
@@ -67,7 +70,10 @@ class AnalysisPipeline:
             department=department,
             processing_time_ms=round(elapsed_ms, 2),
             model_used=model_used,
-            classification_method=classification_method
+            classification_method=classification_method,
+            confidence_level=confidence_level,
+            ai_review_required=ai_review_required,
+            explanation=explanation
         )
 
 analysis_pipeline = AnalysisPipeline()

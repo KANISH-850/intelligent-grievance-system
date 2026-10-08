@@ -42,6 +42,16 @@ export interface Grievance {
   status: Status
   created_at: string
   updated_at: string
+  // Phase 11 Metadata
+  ai_confidence?: number | null
+  ai_confidence_level?: "HIGH" | "MEDIUM" | "LOW" | null
+  ai_review_required?: boolean
+  ai_classification_method?: string | null
+  ai_explanation_terms?: string[]
+  ai_original_category?: string | null
+  is_human_corrected?: boolean
+  human_corrected_by?: string | null
+  human_corrected_at?: string | null
   department?: Department
   user?: {
     id: string
@@ -49,6 +59,26 @@ export interface Grievance {
     email: string
   }
   status_history?: GrievanceStatusHistory[]
+}
+
+export interface CorrectClassificationPayload {
+  category: string
+  remarks?: string
+}
+
+export interface AIAnalyticsData {
+  total_predictions: number
+  confidence_distribution: {
+    high: number
+    medium: number
+    low: number
+  }
+  ai_review_required_count: number
+  human_corrected_count: number
+  methods: Array<{
+    method: string
+    count: number
+  }>
 }
 
 export interface SubmitGrievancePayload {

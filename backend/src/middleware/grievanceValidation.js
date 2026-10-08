@@ -27,10 +27,10 @@ const validateGrievanceSubmission = (req, res, next) => {
     });
   }
 
-  if (trimmedText.length < 3) {
+  if (trimmedText.length < 5) {
     return res.status(400).json({
       success: false,
-      message: "Grievance text is too short. Minimum 3 characters required.",
+      message: "Grievance text is too short. Minimum 5 characters required.",
     });
   }
 

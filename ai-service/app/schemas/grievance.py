@@ -77,7 +77,23 @@ class GrievanceResponse(BaseModel):
     )
     classification_method: Optional[str] = Field(
         None,
-        description="Method used for classification (ml_transformer_pipeline or rule_based_fallback)",
-        json_schema_extra={"example": "ml_transformer_pipeline"}
+        description="Method used for classification (tfidf_logistic_regression or rule_based_fallback)",
+        json_schema_extra={"example": "tfidf_logistic_regression"}
     )
+    confidence_level: Optional[str] = Field(
+        None,
+        description="Confidence level classification (HIGH, MEDIUM, LOW)",
+        json_schema_extra={"example": "HIGH"}
+    )
+    ai_review_required: Optional[bool] = Field(
+        None,
+        description="Flag indicating if low-confidence human review is required",
+        json_schema_extra={"example": False}
+    )
+    explanation: Optional[dict] = Field(
+        None,
+        description="TF-IDF feature contribution explainability details",
+        json_schema_extra={"example": {"method": "tfidf_feature_contribution", "top_terms": ["water", "supply"]}}
+    )
+
 

@@ -5,6 +5,8 @@ const app = require("../src/app");
 const { prisma } = require("../src/config/database");
 const { generateToken } = require("../src/utils/jwt");
 
+const aiService = require("../src/services/ai.service");
+
 const request = supertest(app);
 
 describe("Phase 9 — Notification System & Workflow Integration APIs", () => {
@@ -20,8 +22,24 @@ describe("Phase 9 — Notification System & Workflow Integration APIs", () => {
   let createdGrievanceId = "";
   let createdGrievanceNum = "";
   let testNotificationId = "";
+  const originalAnalyzeGrievance = aiService.analyzeGrievance;
 
   before(async () => {
+    aiService.analyzeGrievance = async (text) => ({
+      language: "English",
+      translated_text: text,
+      category: "Water Supply",
+      category_confidence: 0.95,
+      confidence_level: "HIGH",
+      ai_review_required: false,
+      classification_method: "tfidf_logistic_regression",
+      model_used: "tfidf-logistic-regression",
+      explanation_terms: ["water", "supply"],
+      priority: text.includes("critical") ? "CRITICAL" : text.includes("high") ? "HIGH" : "MEDIUM",
+      priority_confidence: 0.90,
+      department: "P9 Notifications Dept",
+      processing_time_ms: 5.0,
+    });
     // 1. Create unique test department
     testDept = await prisma.department.create({
       data: {
@@ -66,6 +84,7 @@ describe("Phase 9 — Notification System & Workflow Integration APIs", () => {
   });
 
   after(async () => {
+    aiService.analyzeGrievance = originalAnalyzeGrievance;
     // Cleanup test data
     if (createdGrievanceId) {
       await prisma.notification.deleteMany({ where: { grievance_id: createdGrievanceId } });

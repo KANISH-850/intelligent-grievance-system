@@ -79,6 +79,12 @@ const submitGrievance = async ({ userId, text }) => {
         priority: priority,
         department_id: department.id,
         status: "SUBMITTED",
+        ai_confidence: aiAnalysis.category_confidence,
+        ai_confidence_level: aiAnalysis.confidence_level,
+        ai_review_required: aiAnalysis.ai_review_required,
+        ai_classification_method: aiAnalysis.classification_method,
+        ai_explanation_terms: aiAnalysis.explanation_terms,
+        ai_original_category: aiAnalysis.category,
       },
       include: {
         department: {

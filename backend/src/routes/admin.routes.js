@@ -19,7 +19,13 @@ router.patch("/grievances/:id/status", adminController.updateGrievanceStatus);
 // Admin Department-Specific Grievances View
 router.get("/departments/:departmentId/grievances", adminController.getDepartmentGrievances);
 
+// Admin Classification Correction
+router.patch("/grievances/:id/classification", adminController.correctClassification);
+
 // Admin System-Wide Analytics
 router.get("/analytics", adminController.getAdminAnalytics);
+
+// Admin AI Performance & Review Analytics
+router.get("/analytics/ai", adminController.getAIAnalytics);
 
 module.exports = router;

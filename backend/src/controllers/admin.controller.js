@@ -100,10 +100,54 @@ const getAdminAnalytics = async (req, res, next) => {
   }
 };
 
+/**
+ * @route   PATCH /api/v1/admin/grievances/:id/classification
+ * @desc    Manually correct grievance classification & department routing
+ * @access  Private (Admin)
+ */
+const correctClassification = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { category, remarks } = req.body;
+
+    const updated = await adminService.correctClassification(req.user.id, id, {
+      category,
+      remarks,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Grievance classification updated successfully",
+      data: updated,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/v1/admin/analytics/ai
+ * @desc    Get AI performance, confidence distribution, and review analytics for Admin
+ * @access  Private (Admin)
+ */
+const getAIAnalytics = async (req, res, next) => {
+  try {
+    const analytics = await adminService.getAIAnalytics();
+    return res.status(200).json({
+      success: true,
+      data: analytics,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllGrievances,
   getAdminGrievanceById,
   updateGrievanceStatus,
   getDepartmentGrievances,
   getAdminAnalytics,
+  correctClassification,
+  getAIAnalytics,
 };

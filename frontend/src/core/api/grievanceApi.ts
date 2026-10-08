@@ -5,6 +5,7 @@ import type {
   Department,
   ChatbotMessageResponse,
   AnalyticsData,
+  AIAnalyticsData,
   NotificationItem,
   NotificationListResponse,
 } from "@/shared/types/grievance"
@@ -118,6 +119,21 @@ export async function getOfficerAnalyticsApi(): Promise<ApiResponse<AnalyticsDat
 
 export async function getAdminAnalyticsApi(): Promise<ApiResponse<AnalyticsData>> {
   return apiFetch<ApiResponse<AnalyticsData>>("/admin/analytics")
+}
+
+export async function correctAdminClassificationApi(
+  id: string,
+  category: string,
+  remarks?: string
+): Promise<ApiResponse<Grievance>> {
+  return apiFetch<ApiResponse<Grievance>>(`/admin/grievances/${id}/classification`, {
+    method: "PATCH",
+    body: JSON.stringify({ category, remarks }),
+  })
+}
+
+export async function getAdminAIAnalyticsApi(): Promise<ApiResponse<AIAnalyticsData>> {
+  return apiFetch<ApiResponse<AIAnalyticsData>>("/admin/analytics/ai")
 }
 
 

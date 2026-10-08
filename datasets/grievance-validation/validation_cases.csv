@@ -1,0 +1,109 @@
+text,category,priority,case_type
+"Water supply has been cut off in our street for 3 days and pipe is leaking near gate",Water Supply,HIGH,normal
+"Contaminated yellow drinking water with foul smell coming from municipal tap in Block C",Water Supply,CRITICAL,emergency
+"Requesting update on new domestic water connection application W-9841",Water Supply,LOW,short
+"Water tanker did not arrive despite full payment made 48 hours ago",Water Supply,HIGH,normal
+"Low pressure water on third floor during morning hours",Water Supply,MEDIUM,borderline
+"Frequent unannounced power cuts every night from 8pm to 11pm in green avenue",Electricity,MEDIUM,normal
+"High voltage fluctuation caused AC compressor fire and spark on electric pole",Electricity,CRITICAL,emergency
+"Electricity bill for consumer number 49201 is double the usual amount without reason",Electricity,LOW,normal
+"Live electrical wire hanging dangerously low near primary school entrance gate",Electricity,CRITICAL,emergency
+"Streetlights not working on main ring road causing nighttime driving hazard",Electricity,MEDIUM,normal
+"Huge deep pothole on MG road caused motorcycle accident yesterday evening",Roads and Transport,HIGH,normal
+"Main arterial bridge joint is loose and vibrating violently under heavy trucks",Roads and Transport,CRITICAL,emergency
+"Bus route 42 cancelled during morning peak office hours without notice",Roads and Transport,MEDIUM,short
+"Speed breaker needed near government school zone to slow down rash drivers",Roads and Transport,LOW,normal
+"Traffic light signal broken at central market square causing massive gridlock",Roads and Transport,MEDIUM,normal
+"Primary health center lacks basic emergency medicines and rabies vaccine",Healthcare,CRITICAL,emergency
+"Casualty doctor absent during night duty hours at district government hospital",Healthcare,CRITICAL,emergency
+"Hygiene conditions in government hospital maternity ward are terrible",Healthcare,HIGH,normal
+"Ambulance helpline 108 did not pick up call during medical emergency",Healthcare,CRITICAL,emergency
+"Requesting reimbursement status for Ayushman Bharat medical claim",Healthcare,LOW,normal
+"School building ceiling plaster falling down in Class 5 classroom creating risk",Education,CRITICAL,emergency
+"No functional toilets available for girl students in high school campus",Education,HIGH,normal
+"Stale mid day meal served to elementary students causing stomach infection",Education,CRITICAL,emergency
+"Mathematics teacher post vacant for past 8 months in government school",Education,MEDIUM,normal
+"Delay in distribution of free textbooks for academic session 2026",Education,LOW,short
+"Garbage dumping community bin overflowing with flies and terrible stench",Sanitation,HIGH,normal
+"Door to door garbage pickup vehicle has not come to our street for 6 days",Sanitation,MEDIUM,normal
+"Open sewage line overflowing into main road creating severe disease risk",Sanitation,CRITICAL,emergency
+"Public toilet in bus stand is filthy, broken and lacks water supply",Sanitation,HIGH,normal
+"Decomposing dead dog lying on side of road near vegetable market",Sanitation,HIGH,normal
+"Delay in birth certificate issuance after submitting all documents 40 days ago",Municipal Services,LOW,normal
+"Stray dog pack aggressive and biting pedestrians in residential colony",Municipal Services,HIGH,normal
+"Property tax portal showing payment error and money deducted from account",Municipal Services,LOW,normal
+"Dangerous dead tree branch about to fall on street light cable",Municipal Services,HIGH,normal
+"Public park encroached by illegal vendor sheds and commercial waste",Municipal Services,MEDIUM,normal
+"Patwari demanding bribe for land mutation entry update in khatauni",Revenue,CRITICAL,emergency
+"Discrepancy in land survey measurement carried out by revenue inspector",Revenue,MEDIUM,normal
+"Delay in caste and income certificate issuance needed for college admission",Revenue,MEDIUM,normal
+"Encumbrance certificate portal failing with database connection error",Revenue,LOW,short
+"Government revenue land encroached by local private builders",Revenue,HIGH,normal
+"Cyber fraud report regarding unauthorized UPI money transfer from bank account",Other,CRITICAL,emergency
+"Ration card member addition application pending with food supply officer",Other,LOW,normal
+"LPG gas cylinder refill delivery delayed by more than 12 days",Other,MEDIUM,normal
+"Pension payment not credited for past two months for senior citizen",Other,HIGH,normal
+"Public park grass cutting and maintenance neglected by division",Other,LOW,short
+"Water leaks from pipe and power cut also happening in street",Water Supply,HIGH,ambiguous
+"School has no water and toilet clean issue",Education,HIGH,ambiguous
+"Garbage near hospital gate blocking road and stinking badly",Sanitation,HIGH,ambiguous
+"Pothole near street light causing night bike slide",Roads and Transport,HIGH,ambiguous
+"Land dispute between neighbors causing road blockage and argument",Revenue,MEDIUM,ambiguous
+"watr not comin in tap since morning",Water Supply,MEDIUM,typo
+"electrity spark in pole out side home",Electricity,HIGH,typo
+"pothols on main road vry dangerous",Roads and Transport,HIGH,typo
+"hospitl staff rude to patients in emergency",Healthcare,HIGH,typo
+"garbag clearanc truck not coming",Sanitation,MEDIUM,typo
+"pani nahi aa raha hai pichle do din se",Water Supply,HIGH,transliterated
+"bijli kat gayi hai pooray ilake mein",Electricity,HIGH,transliterated
+"sadak par bahot bada gaddha hai",Roads and Transport,HIGH,transliterated
+"kuch bhi kaam sahi se nahi ho raha portal par",Other,LOW,transliterated
+"hamare mohalle me safai bilkul nahi hai",Sanitation,MEDIUM,transliterated
+"எங்கள் பகுதியில் தண்ணீர் வரவில்லை",Water Supply,HIGH,indic_script
+"மின்சாரம் அடிக்கடி துண்டிக்கப்படுகிறது",Electricity,HIGH,indic_script
+"சாலை முழுவதும் குழிகள் உள்ளன",Roads and Transport,HIGH,indic_script
+"மருத்துவமனையில் மருத்துவர் இல்லை",Healthcare,CRITICAL,indic_script
+"குப்பை அகற்றப்படவில்லை",Sanitation,HIGH,indic_script
+"हमारे इलाके में पानी की किल्लत है",Water Supply,HIGH,indic_script
+"अस्पताल में दवाई उपलब्ध नहीं है",Healthcare,CRITICAL,indic_script
+"सड़क की हालत बहुत खराब है",Roads and Transport,HIGH,indic_script
+"स्कूल की इमारत जर्जर हो चुकी है",Education,HIGH,indic_script
+"बिजली का ट्रांसफॉर्मर जल गया है",Electricity,CRITICAL,indic_script
+"No water",Water Supply,LOW,short
+"Power outage",Electricity,LOW,short
+"Road broken",Roads and Transport,LOW,short
+"Garbage stink",Sanitation,LOW,short
+"No doctor",Healthcare,MEDIUM,short
+"The quick brown fox jumps over the lazy dog",Other,LOW,unrelated
+"Hello good morning team testing the system",Other,LOW,unrelated
+"Random text string 123456789 testing portal",Other,LOW,unrelated
+"Weather is very nice today in our city",Other,LOW,unrelated
+"Requesting general information regarding central schemes",Other,LOW,unrelated
+"Immediate emergency water pipe explosion flooded entire basement and electrical panel",Water Supply,CRITICAL,emergency
+"Transformer fire burning near gas line call fire brigade immediately",Electricity,CRITICAL,emergency
+"Bus overturned on highway near village crossroad major injuries reported",Roads and Transport,CRITICAL,emergency
+"Oxygen supply failure in ICU unit of government civil hospital urgent help needed",Healthcare,CRITICAL,emergency
+"School classroom roof collapse during rainy storm children trapped",Education,CRITICAL,emergency
+"Toxic chemical waste dumping in river water source causing fish death and chemical burn",Sanitation,CRITICAL,emergency
+"Rabid stray dog pack bit three young children in park urgent municipal squad needed",Municipal Services,CRITICAL,emergency
+"Illegal land grabbing mob threatening revenue officer with weapons",Revenue,CRITICAL,emergency
+"Urgent help needed my bank account balance cleared in phishing call",Other,CRITICAL,emergency
+"Water pipe damaged by road contractor while laying underground telecom cables",Water Supply,HIGH,borderline
+"Electric supply line tripped when tree branch fell during high winds",Electricity,HIGH,borderline
+"Street light pole damaged by heavy goods truck reversing into footpath",Municipal Services,MEDIUM,borderline
+"School water tank contaminated due to improper lid closure by sweepers",Education,HIGH,borderline
+"Drainage water entering primary school campus after heavy rainfall",Sanitation,HIGH,borderline
+"Government hospital building lift stuck between floors with patients inside",Healthcare,CRITICAL,borderline
+"Property registration land map discrepancy reported at taluk office",Revenue,MEDIUM,borderline
+"Bus driver driving rashly without stopping at designated public stop",Roads and Transport,MEDIUM,borderline
+"Trade license online portal server returning 500 error on document upload",Municipal Services,LOW,borderline
+"Delay in widow pension verification by revenue department official",Revenue,MEDIUM,borderline
+"Street pipe leaking slightly near park entrance gate",Water Supply,LOW,normal
+"Voltage low in shop during afternoon hours",Electricity,LOW,normal
+"Small crack on sidewalk near bus stop",Roads and Transport,LOW,normal
+"Cleanliness issue in hospital lobby area",Healthcare,LOW,normal
+"Blackboard broken in school class 4",Education,LOW,normal
+"Garbage bin full near corner shop",Sanitation,LOW,normal
+"Name spelling mistake on property tax bill",Municipal Services,LOW,normal
+"Certificate verification pending at office desk",Revenue,LOW,normal
+"General feedback regarding portal usability",Other,LOW,normal

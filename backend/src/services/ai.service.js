@@ -48,11 +48,23 @@ const analyzeGrievance = async (text) => {
       throw error;
     }
 
+    const category_confidence = typeof data.category_confidence === "number" ? data.category_confidence : 1.0;
+    const confidence_level = data.confidence_level || (category_confidence >= 0.75 ? "HIGH" : category_confidence >= 0.50 ? "MEDIUM" : "LOW");
+    const ai_review_required = typeof data.ai_review_required === "boolean" ? data.ai_review_required : (category_confidence < 0.75);
+    const classification_method = data.classification_method || "tfidf_logistic_regression";
+    const model_used = data.model_used || "tfidf-logistic-regression";
+    const explanation_terms = Array.isArray(data.explanation?.top_terms) ? data.explanation.top_terms : [];
+
     return {
       language: data.language,
       translated_text: data.translated_text,
       category: data.category,
-      category_confidence: typeof data.category_confidence === "number" ? data.category_confidence : 1.0,
+      category_confidence,
+      confidence_level,
+      ai_review_required,
+      classification_method,
+      model_used,
+      explanation_terms,
       priority: data.priority,
       priority_confidence: typeof data.priority_confidence === "number" ? data.priority_confidence : 1.0,
       department: data.department,

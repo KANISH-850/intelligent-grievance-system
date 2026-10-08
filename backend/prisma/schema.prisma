@@ -73,9 +73,21 @@ model Grievance {
   category          String
   priority          Priority @default(MEDIUM)
   department_id     String
-  status            Status   @default(SUBMITTED)
-  created_at        DateTime @default(now())
-  updated_at        DateTime @updatedAt
+  status                  Status   @default(SUBMITTED)
+
+  // Phase 11 — AI Confidence, Review & Explainability Metadata
+  ai_confidence           Float?
+  ai_confidence_level     String?
+  ai_review_required      Boolean  @default(false)
+  ai_classification_method String?
+  ai_explanation_terms    String[] @default([])
+  ai_original_category    String?
+  is_human_corrected      Boolean  @default(false)
+  human_corrected_by      String?
+  human_corrected_at      DateTime?
+
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
 
   user           User                     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   department     Department               @relation(fields: [department_id], references: [id], onDelete: Restrict)

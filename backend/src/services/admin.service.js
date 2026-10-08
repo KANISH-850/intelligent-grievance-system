@@ -231,8 +231,6 @@ const getAdminAnalytics = async () => {
     prisma.grievance.groupBy({
       by: ["category"],
       _count: { _all: true },
-      orderBy: { _count: { category: "desc" } },
-      take: 10,
     }),
     prisma.department.findMany({
       select: { id: true, name: true, code: true },
@@ -302,10 +300,137 @@ const getAdminAnalytics = async () => {
   };
 };
 
+/**
+ * Manually correct classification for a grievance (Admin only).
+ * Preserves historical AI prediction while updating category and routing.
+ */
+const correctClassification = async (adminId, grievanceId, { category, remarks }) => {
+  const validCategories = [
+    "Water Supply",
+    "Electricity",
+    "Roads and Transport",
+    "Healthcare",
+    "Education",
+    "Sanitation",
+    "Municipal Services",
+    "Revenue",
+    "Other",
+  ];
+
+  if (!category || !validCategories.includes(category)) {
+    const error = new Error(`Invalid category. Must be one of: ${validCategories.join(", ")}`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const grievance = await prisma.grievance.findUnique({
+    where: { id: grievanceId },
+  });
+
+  if (!grievance) {
+    const error = new Error("Grievance not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  // Resolve department matching target category
+  let department = await prisma.department.findFirst({
+    where: { name: { equals: category, mode: "insensitive" } },
+  });
+
+  if (!department) {
+    department = await prisma.department.findFirst({ where: { code: "OTH" } });
+  }
+
+  const previousCategory = grievance.category;
+  const previousDeptId = grievance.department_id;
+
+  const updatedGrievance = await prisma.$transaction(async (tx) => {
+    const updated = await tx.grievance.update({
+      where: { id: grievanceId },
+      data: {
+        category,
+        department_id: department ? department.id : grievance.department_id,
+        ai_review_required: false,
+        is_human_corrected: true,
+        human_corrected_by: adminId,
+        human_corrected_at: new Date(),
+        ai_original_category: grievance.ai_original_category || previousCategory,
+      },
+      include: {
+        department: { select: { id: true, name: true, code: true } },
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    await tx.grievanceStatusHistory.create({
+      data: {
+        grievance_id: grievanceId,
+        status: grievance.status,
+        remarks: remarks || `Category manually corrected from '${previousCategory}' to '${category}' by Admin.`,
+        changed_by: adminId,
+      },
+    });
+
+    // Notify citizen if category/department changed
+    if (previousCategory !== category) {
+      await tx.notification.create({
+        data: {
+          user_id: grievance.user_id,
+          grievance_id: grievanceId,
+          type: "STATUS_CHANGED",
+          title: "Grievance Classification Updated",
+          message: `Your grievance ${grievance.grievance_number} classification has been updated to '${category}'.`,
+        },
+      });
+    }
+
+    return updated;
+  });
+
+  return updatedGrievance;
+};
+
+/**
+ * Fetch AI performance, confidence distribution, and review analytics for Admin.
+ */
+const getAIAnalytics = async () => {
+  const totalCount = await prisma.grievance.count();
+  const highConfCount = await prisma.grievance.count({ where: { ai_confidence_level: "HIGH" } });
+  const medConfCount = await prisma.grievance.count({ where: { ai_confidence_level: "MEDIUM" } });
+  const lowConfCount = await prisma.grievance.count({ where: { ai_confidence_level: "LOW" } });
+  const reviewReqCount = await prisma.grievance.count({ where: { ai_review_required: true } });
+  const humanCorrectedCount = await prisma.grievance.count({ where: { is_human_corrected: true } });
+
+  const methods = await prisma.grievance.groupBy({
+    by: ["ai_classification_method"],
+    _count: { _all: true },
+  });
+
+  const methodBreakdown = methods.map((m) => ({
+    method: m.ai_classification_method || "tfidf_logistic_regression",
+    count: m._count._all,
+  }));
+
+  return {
+    total_predictions: totalCount,
+    confidence_distribution: {
+      high: highConfCount,
+      medium: medConfCount,
+      low: lowConfCount,
+    },
+    ai_review_required_count: reviewReqCount,
+    human_corrected_count: humanCorrectedCount,
+    methods: methodBreakdown,
+  };
+};
+
 module.exports = {
   getAllGrievances,
   getAdminGrievanceById,
   updateAdminGrievanceStatus,
   getDepartmentGrievances,
   getAdminAnalytics,
+  correctClassification,
+  getAIAnalytics,
 };
