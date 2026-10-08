@@ -1,0 +1,23 @@
+{
+  "model_type": "tfidf-logistic-regression",
+  "vectorizer": "TfidfVectorizer(ngram_range=(1,2), max_features=5000)",
+  "classifier": "LogisticRegression(C=2.5)",
+  "categories": [
+    "Education",
+    "Electricity",
+    "Healthcare",
+    "Municipal Services",
+    "Other",
+    "Revenue",
+    "Roads and Transport",
+    "Sanitation",
+    "Water Supply"
+  ],
+  "num_categories": 9,
+  "validation_metrics": {
+    "accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1_score": 1.0
+  }
+}

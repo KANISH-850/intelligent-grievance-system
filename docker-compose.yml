@@ -1,0 +1,93 @@
+services:
+  # 1. PostgreSQL Database Service
+  postgres:
+    image: postgres:15-alpine
+    container_name: grievance_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-intelligent_grievance}
+    ports:
+      - "5433:5432" # Host port 5433 prevents conflict with native host PostgreSQL
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d intelligent_grievance"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - grievance-network
+
+  # 2. Python FastAPI AI Microservice
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: grievance_ai_service
+    restart: always
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - grievance-network
+
+  # 3. Node.js + Express Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: grievance_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      PORT: 5000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-intelligent_grievance}
+      JWT_SECRET: ${JWT_SECRET:-super-secret-key-grievance-system-2026-academic-mvp}
+      JWT_EXPIRES_IN: 1d
+      AI_SERVICE_URL: http://ai-service:8001
+      CLIENT_URL: http://localhost:80
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ai-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5000/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - grievance-network
+
+  # 4. React + Nginx Web Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:5000/api/v1
+    container_name: grievance_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - grievance-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  grievance-network:
+    driver: bridge
