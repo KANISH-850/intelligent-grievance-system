@@ -90,9 +90,10 @@ const analyzeGrievance = async (text) => {
  *
  * @param {string} message - Raw citizen query
  * @param {Array} userGrievances - Authenticated citizen's grievances from DB
+ * @param {Object} [sessionContext=null] - Lightweight conversation context
  * @returns {Promise<Object>} Chatbot response
  */
-const processChatbotMessage = async (message, userGrievances = []) => {
+const processChatbotMessage = async (message, userGrievances = [], sessionContext = null) => {
   const url = `${AI_SERVICE_URL}/chatbot/process`;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
@@ -101,7 +102,11 @@ const processChatbotMessage = async (message, userGrievances = []) => {
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, user_grievances: userGrievances }),
+      body: JSON.stringify({
+        message,
+        user_grievances: userGrievances,
+        session_context: sessionContext,
+      }),
       signal: controller.signal,
     });
 
@@ -112,8 +117,13 @@ const processChatbotMessage = async (message, userGrievances = []) => {
       return {
         message: data.message,
         language: data.language || "English",
-        intent: data.intent || "GENERAL_GUIDANCE",
+        intent: data.intent || "UNKNOWN",
+        grievance_number: data.grievance_number || null,
         grievance: data.grievance || null,
+        confidence: typeof data.confidence === "number" ? data.confidence : 1.0,
+        data: data.data || {},
+        session_context: data.session_context || null,
+        explanation_terms: Array.isArray(data.explanation_terms) ? data.explanation_terms : [],
       };
     }
   } catch (err) {
@@ -132,30 +142,45 @@ const processChatbotMessage = async (message, userGrievances = []) => {
         message: `Your grievance ${found.grievance_number} is currently ${found.status}. Assigned to ${dept}.`,
         language: "English",
         intent: "GRIEVANCE_STATUS",
+        grievance_number: found.grievance_number,
         grievance: {
           grievance_number: found.grievance_number,
           status: found.status,
           department: dept,
           category: found.category,
         },
+        confidence: 0.95,
+        data: { grievance: found },
+        session_context: { last_grievance_number: found.grievance_number },
+        explanation_terms: [],
       };
     } else {
       return {
         message: `No grievance record with reference ${grvNum} was found under your account. For privacy and security, citizens can only query their own complaints.`,
         language: "English",
         intent: "GRIEVANCE_STATUS",
+        grievance_number: grvNum,
         grievance: null,
+        confidence: 0.9,
+        data: {},
+        session_context: sessionContext,
+        explanation_terms: [],
       };
     }
   }
 
-  if (/my grievance|my complaint|list my/i.test(message)) {
+  if (/my grievance|my complaint|list my|show all/i.test(message)) {
     if (userGrievances.length === 0) {
       return {
         message: "You currently have no registered grievances in the system.",
         language: "English",
         intent: "LIST_GRIEVANCES",
+        grievance_number: null,
         grievance: null,
+        confidence: 0.9,
+        data: {},
+        session_context: sessionContext,
+        explanation_terms: [],
       };
     }
     const listStr = userGrievances.map((g) => `• ${g.grievance_number} [${g.status}]`).join("\n");
@@ -163,15 +188,83 @@ const processChatbotMessage = async (message, userGrievances = []) => {
       message: `You have ${userGrievances.length} registered grievance(s):\n${listStr}`,
       language: "English",
       intent: "LIST_GRIEVANCES",
+      grievance_number: userGrievances[0].grievance_number,
+      grievance: userGrievances[0],
+      confidence: 0.9,
+      data: { count: userGrievances.length },
+      session_context: { last_grievance_number: userGrievances[0].grievance_number },
+      explanation_terms: [],
+    };
+  }
+
+  const msgLower = message.toLowerCase();
+
+  if (/^(hi|hello|namaste|hey|greetings)/i.test(msgLower)) {
+    return {
+      message: "Namaste! Welcome to the Central Government Grievance Assistance AI.",
+      language: "English",
+      intent: "GREETING",
+      grievance_number: null,
       grievance: null,
+      confidence: 0.95,
+      data: {},
+      session_context: sessionContext,
+      explanation_terms: [],
+    };
+  }
+
+  if (/department|who handles|ministry|which dept|electricity|water supply/i.test(msgLower)) {
+    return {
+      message: "The framework dispatches grievances to 9 government departments including Electricity, Water Supply, Healthcare, Roads and Transport, etc.",
+      language: "English",
+      intent: "DEPARTMENT_INFORMATION",
+      grievance_number: null,
+      grievance: null,
+      confidence: 0.92,
+      data: {},
+      session_context: sessionContext,
+      explanation_terms: [],
+    };
+  }
+
+  if (/how (can|do) i submit|submit a complaint|how to file|file a complaint/i.test(msgLower)) {
+    return {
+      message: "To submit a new public grievance, navigate to 'Submit Grievance' in the portal sidebar.",
+      language: "English",
+      intent: "SUBMIT_GRIEVANCE_GUIDANCE",
+      grievance_number: null,
+      grievance: null,
+      confidence: 0.92,
+      data: {},
+      session_context: sessionContext,
+      explanation_terms: [],
+    };
+  }
+
+  if (/cricket|football|match|weather|movie|who won/i.test(msgLower)) {
+    return {
+      message: "I don't have enough information to answer that. I can assist you with submitting a grievance or tracking a complaint.",
+      language: "English",
+      intent: "UNKNOWN",
+      grievance_number: null,
+      grievance: null,
+      confidence: 0.5,
+      data: {},
+      session_context: sessionContext,
+      explanation_terms: [],
     };
   }
 
   return {
     message: "Welcome to the Intelligent Multilingual Grievance AI Assistant. You can ask for grievance status (e.g., 'Status of GRV-2026-000003'), list your complaints, or get filing guidance.",
     language: "English",
-    intent: "GENERAL_GUIDANCE",
+    intent: "HELP",
+    grievance_number: null,
     grievance: null,
+    confidence: 1.0,
+    data: {},
+    session_context: sessionContext,
+    explanation_terms: [],
   };
 };
 

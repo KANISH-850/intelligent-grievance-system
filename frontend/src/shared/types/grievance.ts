@@ -102,12 +102,18 @@ export interface ChatbotMessageResponse {
   message: string
   language?: string
   intent?: string
+  grievance_number?: string | null
+  confidence?: number
+  session_context?: Record<string, unknown> | null
+  explanation_terms?: string[]
   grievance?: {
     grievance_number: string
     status: Status
     department: string
     category?: string
     created_at?: string
+    ai_confidence?: number
+    ai_explanation_terms?: string[]
   } | null
 }
 

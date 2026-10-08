@@ -7,9 +7,9 @@ const { handleChatbotMessage } = require("../services/chatbot.service");
 const postMessage = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { message } = req.body;
+    const { message, session_context } = req.body;
 
-    const result = await handleChatbotMessage(userId, message);
+    const result = await handleChatbotMessage(userId, message, session_context);
     return res.status(200).json(result);
   } catch (error) {
     next(error);

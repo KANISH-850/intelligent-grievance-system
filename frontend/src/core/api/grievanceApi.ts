@@ -106,10 +106,13 @@ export async function getAdminDepartmentGrievancesApi(
 
 // --- CHATBOT & ANALYTICS API ENDPOINTS ---
 
-export async function sendChatbotMessageApi(message: string): Promise<ChatbotMessageResponse> {
+export async function sendChatbotMessageApi(
+  message: string,
+  session_context?: Record<string, unknown> | null
+): Promise<ChatbotMessageResponse> {
   return apiFetch<ChatbotMessageResponse>("/chatbot/message", {
     method: "POST",
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, session_context }),
   })
 }
 
