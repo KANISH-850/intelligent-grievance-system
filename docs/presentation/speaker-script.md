@@ -27,7 +27,7 @@
 - **Spoken Text (35s)**: "In conventional manual grievance portals, citizens frequently choose incorrect departments from dropdown menus. This results in complaints being transferred between departments for weeks. Furthermore, urgent public safety hazards like water pipe ruptures or transformer fires wait in line behind routine inquiries. Non-English regional complaints create script identification delays, and citizens lack real-time status assistance."
 - **Transition Sentence**: "To resolve these operational bottlenecks, we established six concrete project objectives."
 - **Likely Examiner Question**: "How did you measure or identify these operational bottlenecks?"
-- **Concise Answer**: "Through analysis of public administrative literature on CPGRAMS workflows, where manual sorting creates multi-day processing queues and an estimated 25 to 30 percent misrouting rate in citizen-selected forms."
+- **Concise Answer**: "Through analysis of public administrative literature on CPGRAMS workflows, where manual sorting creates multi-day processing queues and a high frequency of inter-department misrouting in citizen-selected forms."
 
 ---
 
