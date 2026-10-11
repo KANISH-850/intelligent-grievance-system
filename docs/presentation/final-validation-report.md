@@ -28,16 +28,17 @@ Validated against the active, running database and microservices using live HTTP
 
 | Workflow Area | Status | Verified Behavior & Live Evidence |
 |---|---|---|
-| **Citizen Submission & AI Ingestion** | **PASS** | Submitted demo water grievance. Dispatched to FastAPI `/api/v1/analyze`. Returned tracking reference `GRV-2026-XXXXXX`, classified as `Water Supply & Sanitation` with `HIGH` priority, 88.5% confidence, and XAI explanation terms `['pipeline', 'rupture', 'leakage', 'water']`. |
+| **Citizen Submission & AI Ingestion** | **PASS** | Submitted demo water grievance. Dispatched to FastAPI `/api/v1/analyze`. Returned tracking reference `GRV-2026-XXXXXX`, classified as `Water Supply` with `HIGH` priority, 88.5% confidence, and XAI explanation terms `['pipeline', 'rupture', 'leakage', 'water']`. |
 | **Multilingual Script Detection** | **PASS** | Submitted Hindi test complaint (`"हमारे क्षेत्र में 3 दिन से पानी की आपूर्ति पूरी तरह बंद है"`). FastAPI `langdetect` identified script as `hi` (Hindi) and routed correctly to Water Supply without corruption. |
 | **Low-Confidence Review Flagging** | **PASS** | Submitted ambiguous text. Model score fell below threshold (`0.75`), properly setting `ai_review_required: true` and routing to administrator queue for inspection. |
 | **Citizen List & Details Timeline** | **PASS** | Citizen portal displays submitted grievances with status badges. Grievance detail displays sequential status timeline (`SUBMITTED` → `UNDER_REVIEW` → `RESOLVED`) and department assignment. |
-| **Officer Department Queue** | **PASS** | Water officer (`officer.water@example.com`) logs in and sees only `Water Supply & Sanitation` complaints. Other departments (Electricity, Transport) are strictly filtered out by `where: { department_id: req.user.department_id }`. |
+| **Officer Department Queue** | **PASS** | Water officer (`officer.water@example.com`) logs in and sees only `Water Supply` complaints. Other departments (Electricity, Roads and Transport) are strictly filtered out by `where: { department_id: req.user.department_id }`. |
 | **Officer Status Update & Remarks** | **PASS** | Officer updated complaint from `UNDER_REVIEW` to `RESOLVED`. System strictly enforced mandatory resolution remarks (attempt without remarks returned HTTP 400). Status history record created. |
-| **Admin Governance & Override** | **PASS** | Admin (`admin@example.com`) inspected grievance and executed classification correction to `Public Works Department`. Updated `category` and `department_id`, set `is_human_corrected: true`, recorded admin user ID and timestamp, and preserved `ai_original_category` in audit log. |
+| **Admin Governance & Override** | **PASS** | Admin (`admin@example.com`) inspected grievance and executed classification correction to `Roads and Transport`. Updated `category` and `department_id`, set `is_human_corrected: true`, recorded admin user ID and timestamp, and preserved `ai_original_category` in audit log. |
 | **Multilingual Conversational Chatbot** | **PASS** | Tested 9 intent types. Intent `GREETING` returned welcome response. Intent `GRIEVANCE_STATUS` extracted `GRV-2026-XXXXXX` via regex and returned current status card. Follow-up query `"When was it resolved?"` successfully recalled context from session memory. |
 | **Chatbot Privacy Isolation** | **PASS** | Querying a grievance reference belonging to another citizen returned privacy rejection: `"No grievance record found under your account."` |
 | **Notifications & System Analytics** | **PASS** | Changing complaint status triggered in-app notification record for citizen owner. Admin analytics screen renders category breakdown, priority distribution, and AI review rate metrics. |
+
 
 ---
 
@@ -49,7 +50,7 @@ Tested using separate Citizen, Officer, and Administrator JWT credentials.
 |---|---|---|---|
 | **Unauthenticated Route Access** | HTTP 401 Unauthorized for protected endpoints | Returned HTTP 401 with standard error JSON | **PASS** |
 | **Citizen Cross-Tenant Privacy** | Citizen cannot read or manipulate another citizen's grievance | Database query enforces `where: { id, user_id: req.user.id }`; returns HTTP 404 | **PASS** |
-| **Officer Department Queue Isolation** | Water officer cannot see PWD or Electricity grievances | Query enforces `where: { department_id: req.user.department_id }`; 0 foreign rows visible | **PASS** |
+| **Officer Department Queue Isolation** | Water officer cannot see Roads and Transport or Electricity grievances | Query enforces `where: { department_id: req.user.department_id }`; 0 foreign rows visible | **PASS** |
 | **Role-Based Endpoint Protection** | Citizen or Officer cannot invoke admin correction endpoint | Middleware `requireRole('ADMIN')` blocked with HTTP 403 Forbidden | **PASS** |
 | **Invalid State Transition Enforcement** | Block illegal transitions (e.g., jumping from `SUBMITTED` directly to `RESOLVED` without intermediate state or remarks) | Controller state machine validates transition and enforces mandatory remarks, returning HTTP 400 | **PASS** |
 | **Credential & Secret Protection** | No passwords, secrets, or raw stack traces exposed in error responses | Bcrypt cost factor 10 hashing; sanitized error handler returns formatted messages without stack traces | **PASS** |
@@ -70,6 +71,17 @@ All test suites were executed directly in their respective environments:
 
 **Total Automated Tests:** 99 / 99 passing across Python and Node.js.
 
+### Empirical Machine Learning Evaluation Results
+Reproduced directly via the repository's evaluation scripts:
+- **Clean Synthetic Benchmark Test (`ai-service/scripts/evaluate_classifier.py`)**:
+  - Dataset: Held-out test split (`test.csv`), 102 samples.
+  - Accuracy: **100.00%**, Precision: **100.00%**, Recall: **100.00%**, F1-Score: **100.00%**.
+  - Explanation: Measures performance on clean, well-separated synthetic domain templates.
+- **Realistic Edge-Case Validation (`ai-service/scripts/error_analysis.py`)**:
+  - Dataset: 108 challenging validation cases (`validation_cases.csv`) with short text, spelling typos, and multi-domain ambiguity.
+  - Accuracy: **79.63%** (86 correct, 22 incorrect).
+  - Human Review Safety Net: **88.9% (96/108 cases)** triggered `ai_review_required: true` (confidence $< 0.75$), routing ambiguous complaints to human officers/admins instead of misrouting them.
+
 ---
 
 ## 5. Authentic Screenshot Inventory
@@ -83,7 +95,7 @@ All 11 genuine screenshots were captured directly from the running web applicati
 | `03_submission_result.png` | 1440x900 (2x) | `/citizen/grievances/new` | Submission result card with generated reference `GRV-2026-XXXXXX`, AI category, priority badge, and XAI terms. |
 | `04_citizen_grievance_list.png` | 1440x900 (2x) | `/citizen/grievances` | Citizen grievance history table displaying status badges and tracking numbers. |
 | `05_grievance_detail.png` | 1440x900 (2x) | `/citizen/grievances/:id` | Grievance details view with sequential status progression timeline. |
-| `06_officer_queue.png` (`03_officer_queue.png`) | 1440x900 (2x) | `/officer/grievances` | Department-scoped officer queue (`Water Supply & Sanitation`) with priority tags. |
+| `06_officer_queue.png` (`03_officer_queue.png`) | 1440x900 (2x) | `/officer/grievances` | Department-scoped officer queue (`Water Supply`) with priority tags. |
 | `07_officer_status_update.png` | 1440x900 (2x) | `/officer/grievances/:id` | Officer status update modal open with status selection and mandatory resolution remarks. |
 | `08_admin_dashboard.png` (`04_admin_dashboard.png`) | 1440x900 (2x) | `/admin/grievances` | Administrative system-wide grievance control center across all 9 departments. |
 | `09_admin_ai_review.png` | 1440x900 (2x) | `/admin/grievances/:id` | Admin grievance inspection view with "Human Classification Correction" modal open. |

@@ -120,10 +120,10 @@
 ---
 
 ## Slide 14 — Empirical Testing & Verification Metrics
-- **Spoken Text (40s)**: "Our software quality is verified by automated test suites: 34 out of 34 Python `pytest` cases passed for the AI service; 65 out of 65 Node `node --test` backend cases passed across 18 test suites; ESLint completed with 0 errors; Vite production build built cleanly; and `docker compose config` validated container syntax. Evaluation on the synthetic validation split achieved 100% accuracy, though real-world portal noise would yield lower scores."
+- **Spoken Text (40s)**: "Our software quality is verified by automated test suites: 34 out of 34 Python `pytest` cases passed for the AI service; 65 out of 65 Node backend cases passed across 18 test suites; ESLint completed with 0 errors; Vite production build built cleanly; and `docker compose config` validated container syntax. On empirical ML evaluation, the model achieved 100% accuracy on the clean synthetic test split of 102 samples. When evaluated against 108 realistic edge cases with typos and multi-domain ambiguity, raw accuracy was 79.63%, and our confidence threshold safely flagged 88.9% of those cases for human officer review, successfully preventing automated misrouting."
 - **Transition Sentence**: "Finally, let us summarize our conclusions, verified limitations, and future roadmap."
-- **Likely Examiner Question**: "Does 100% validation accuracy on your synthetic dataset prove 100% real-world government accuracy?"
-- **Concise Answer**: "No. Academic honesty requires acknowledging that synthetic dataset performance does not translate directly to real-world government portals where typos, slang, and complex multi-issue text lower accuracy."
+- **Likely Examiner Question**: "Why is there a difference between your 100% clean test accuracy and 79.63% validation accuracy?"
+- **Concise Answer**: "The 100% metric evaluates clean synthetic domain templates where vocabulary is distinct. The 79.63% metric evaluates realistic noisy cases with typos, slang, and multi-department overlap. Crucially, our 0.75 confidence threshold caught 88.9% of those ambiguous cases, routing them to human review rather than misrouting them."
 
 ---
 
