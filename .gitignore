@@ -13,3 +13,4 @@ __pycache__/
 ai-service/models/*.joblib
 ai-service/models/*.safetensors
 *.bin
+scratch/

@@ -121,14 +121,20 @@ When an administrator reviews a flagged complaint via `PATCH /api/v1/admin/griev
 - **Python Pytest AI Suite**: 34 / 34 passed (`py -m pytest` in `ai-service/`).
 - **Node Backend Integration Suite**: 65 / 65 passed across 18 test suites (`npm test` in `backend/`).
 - **Frontend ESLint**: 0 errors (2 fast-refresh warnings).
-- **Frontend Vite Build**: Successful bundle build (`npm run build`).
+- **Frontend Vite Build**: Successful bundle build (`npm run build`, built in 5.84s).
 - **Docker Compose Config**: Validated via `docker compose config`.
+- **Live System Runtime Validation (Phase 17)**:
+  - Task A (Runtime Health): 4/4 services healthy (PostgreSQL 18, FastAPI 8001, Express 5000, Vite 5173).
+  - Task B (E2E Workflows): 100% PASS (Citizen ingestion, AI triage, Officer workflow, Admin override, Chatbot, Analytics).
+  - Task C (Security Boundaries): 100% PASS (401 unauthenticated blocked, 403 cross-role and department tampering blocked, 400 invalid status blocked, zero secrets/stack traces leaked).
+  - Task E (Authentic Screenshots): 11/11 genuine high-resolution screens captured and verified.
 
 ### 2. Test Layer Distinctions
-- **Unit Tests**: Test isolated service modules (e.g. text preprocessing, regex extraction).
-- **Integration Tests**: Test complete HTTP routes and Prisma PostgreSQL transactions.
-- **Build & Lint Checks**: Verify TypeScript types, code syntax, and bundling.
+- **Unit Tests**: Test isolated service modules (e.g. text preprocessing, regex extraction, priority scoring).
+- **Integration Tests**: Test complete HTTP routes and Prisma PostgreSQL transactions with mocked external services.
+- **Build & Lint Checks**: Verify TypeScript types, code syntax, and bundling for production distribution.
 - **Runtime Docker Checks**: Validate service configuration syntax across container hostnames.
+- **Live End-to-End Validation**: Execute real HTTP API requests, browser navigation, and state transitions against the active database and running microservices.
 
 ---
 
