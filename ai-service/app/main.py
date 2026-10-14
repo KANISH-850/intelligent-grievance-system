@@ -1,4 +1,5 @@
 import logging
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
@@ -14,22 +15,28 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ai_service")
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    version=settings.VERSION,
-    description="Microservice providing NLP processing, language detection, classification, priority prediction, and department routing for citizen grievances.",
-    docs_url="/docs",
-    redoc_url="/redoc"
-)
 
-@app.on_event("startup")
-def startup_event():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan: load ML model on startup."""
     logger.info("Initializing AI Microservice & loading ML model singleton...")
     success = model_loader.load_model()
     if success:
         logger.info("ML classification model loaded successfully.")
     else:
         logger.warning("ML model could not be loaded. Rule-based baseline fallback is active.")
+    yield
+    # Shutdown logic (if needed in future) goes here
+
+
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    description="Microservice providing NLP processing, language detection, classification, priority prediction, and department routing for citizen grievances.",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    lifespan=lifespan,
+)
 
 # Custom exception handler for Pydantic validation errors (422)
 @app.exception_handler(RequestValidationError)
