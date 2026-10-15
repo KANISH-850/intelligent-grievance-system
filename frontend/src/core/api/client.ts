@@ -1,7 +1,16 @@
 import { getStoredToken, clearAuthData } from "@/features/auth/authStorage"
 
+// Use VITE_API_BASE_URL if set (via Vercel env vars).
+// Otherwise auto-detect: if running on any vercel.app domain, use the Render backend.
+// Falls back to localhost for local development.
+const isVercel =
+  typeof window !== "undefined" && window.location.hostname.endsWith(".vercel.app")
+
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1"
+  import.meta.env.VITE_API_BASE_URL ||
+  (isVercel
+    ? "https://grievance-backend-qv5e.onrender.com/api/v1"
+    : "http://localhost:5000/api/v1")
 
 export async function apiFetch<T>(
   endpoint: string,
