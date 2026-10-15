@@ -9,104 +9,128 @@ interface StatusTimelineProps {
 
 const WORKFLOW_STEPS: Status[] = ["SUBMITTED", "ASSIGNED", "UNDER_REVIEW", "IN_PROGRESS", "RESOLVED"]
 
+const STEP_LABELS: Record<Status, string> = {
+  SUBMITTED:    "Submitted",
+  ASSIGNED:     "Assigned",
+  UNDER_REVIEW: "Under Review",
+  IN_PROGRESS:  "In Progress",
+  RESOLVED:     "Resolved",
+  REJECTED:     "Rejected",
+}
+
 export const StatusTimeline: React.FC<StatusTimelineProps> = ({ currentStatus, history = [] }) => {
   const isRejected = currentStatus === "REJECTED"
-
-  const getStepIndex = (status: Status) => {
-    return WORKFLOW_STEPS.indexOf(status)
-  }
-
-  const currentIdx = getStepIndex(currentStatus)
+  const currentIdx = WORKFLOW_STEPS.indexOf(currentStatus)
 
   return (
-    <div className="space-y-6">
-      {/* Workflow Progress Tracker */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-          Grievance Lifecycle Progression
-        </h4>
+    <div className="space-y-5">
+      {/* Workflow progress stepper */}
+      <div className="section-card space-y-5">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+          Grievance Lifecycle
+        </h3>
 
         {isRejected ? (
-          <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg text-center space-y-1">
-            <span className="font-bold text-rose-800 text-lg">Grievance Rejected</span>
-            <p className="text-xs text-rose-600">
-              This grievance has been reviewed and marked as rejected by the department officer.
-            </p>
+          <div className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-200 rounded-lg">
+            <div className="w-9 h-9 rounded-full bg-rose-500 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-sm font-bold text-rose-800">Grievance Rejected</p>
+              <p className="text-xs text-rose-600">Reviewed and rejected by the department officer.</p>
+            </div>
           </div>
         ) : (
-          <div className="relative flex items-center justify-between w-full">
-            {/* Connecting line */}
-            <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-muted w-full z-0" />
-            <div
-              className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-primary transition-all duration-300 z-0"
-              style={{
-                width: `${Math.max(0, (currentIdx / (WORKFLOW_STEPS.length - 1)) * 100)}%`,
-              }}
-            />
+          <div className="relative flex items-center justify-between w-full px-2">
+            {/* Track */}
+            <div className="absolute left-4 right-4 top-4 h-0.5 bg-border z-0" />
+            {/* Progress */}
+            {currentIdx >= 0 && (
+              <div
+                className="absolute left-4 top-4 h-0.5 bg-primary z-0 transition-all duration-700"
+                style={{
+                  width: `calc(${(currentIdx / (WORKFLOW_STEPS.length - 1)) * 100}% - 2rem)`,
+                }}
+              />
+            )}
 
             {WORKFLOW_STEPS.map((step, idx) => {
               const isCompleted = currentIdx >= idx
-              const isCurrent = currentStatus === step
+              const isCurrent   = currentStatus === step
 
               return (
-                <div key={step} className="relative z-10 flex flex-col items-center">
+                <div key={step} className="relative z-10 flex flex-col items-center gap-2">
                   <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
                       isCurrent
-                        ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110"
+                        ? "bg-primary text-primary-foreground ring-4 ring-primary/20 scale-110 shadow-md"
                         : isCompleted
                         ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground border-2 border-background"
+                        : "bg-card border-2 border-border text-muted-foreground"
                     }`}
                   >
-                    {idx + 1}
+                    {isCompleted ? (
+                      isCurrent ? (
+                        idx + 1
+                      ) : (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )
+                    ) : (
+                      idx + 1
+                    )}
                   </div>
                   <span
-                    className={`text-[11px] font-medium mt-2 text-center max-w-[70px] ${
-                      isCurrent ? "font-bold text-primary" : "text-muted-foreground"
+                    className={`text-[10px] font-medium text-center max-w-[60px] leading-tight ${
+                      isCurrent ? "font-bold text-primary" : isCompleted ? "text-foreground" : "text-muted-foreground"
                     }`}
                   >
-                    {step.replace("_", " ")}
+                    {STEP_LABELS[step]}
                   </span>
                 </div>
-              );
+              )
             })}
           </div>
         )}
       </div>
 
-      {/* Detailed Status History Audit Log */}
-      <div className="bg-card border rounded-xl p-5 shadow-sm space-y-4">
-        <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+      {/* Audit history log */}
+      <div className="section-card space-y-4">
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
           Status Audit History
-        </h4>
+        </h3>
 
         {history.length === 0 ? (
-          <p className="text-xs text-muted-foreground italic">No history log recorded.</p>
+          <p className="text-xs text-muted-foreground italic">No audit history recorded yet.</p>
         ) : (
-          <div className="relative pl-6 space-y-6 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-muted">
+          <div className="relative pl-6 space-y-5 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-px before:bg-border">
             {history.map((item, index) => (
-              <div key={item.id || index} className="relative group">
-                {/* Bullet node */}
-                <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-background" />
+              <div key={item.id || index} className="relative">
+                <div className="absolute -left-6 top-1.5 w-2.5 h-2.5 rounded-full bg-primary ring-[3px] ring-background" />
 
-                <div className="bg-muted/30 border rounded-lg p-3 space-y-1">
+                <div className="bg-muted/20 border rounded-lg p-3 space-y-2">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <StatusBadge status={item.status} />
-                    <span className="text-xs text-muted-foreground font-mono">
-                      {new Date(item.created_at).toLocaleString()}
+                    <span className="text-[10px] text-muted-foreground font-mono">
+                      {new Date(item.created_at).toLocaleString("en-IN")}
                     </span>
                   </div>
 
                   {item.user && (
-                    <p className="text-xs text-muted-foreground pt-1">
-                      Updated by: <strong className="text-foreground">{item.user.name}</strong> ({item.user.role})
+                    <p className="text-[11px] text-muted-foreground">
+                      Updated by:{" "}
+                      <strong className="text-foreground font-semibold">{item.user.name}</strong>
+                      <span className="ml-1 opacity-60">({item.user.role})</span>
                     </p>
                   )}
 
                   {item.remarks && (
-                    <div className="mt-2 p-2 bg-background border rounded text-xs text-foreground italic">
-                      &quot;{item.remarks}&quot;
+                    <div className="mt-1 p-2.5 bg-background border rounded-md text-xs text-foreground leading-relaxed">
+                      <span className="text-muted-foreground mr-1">→</span>
+                      {item.remarks}
                     </div>
                   )}
                 </div>

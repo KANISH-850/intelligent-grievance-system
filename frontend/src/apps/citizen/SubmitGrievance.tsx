@@ -14,15 +14,13 @@ export function SubmitGrievance() {
   const [submittedResult, setSubmittedResult] = useState<Grievance | null>(null)
 
   const charCount = text.length
-  const isValid = text.trim().length >= 3 && text.length <= 5000
+  const isValid   = text.trim().length >= 3 && text.length <= 5000
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!isValid) return
-
     setError(null)
     setIsSubmitting(true)
-
     try {
       const res = await submitGrievanceApi(text.trim())
       if (res.success && res.data) {
@@ -31,69 +29,68 @@ export function SubmitGrievance() {
         throw new Error(res.message || "Failed to submit grievance.")
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unable to submit grievance. Please try again."
-      setError(msg)
+      setError(err instanceof Error ? err.message : "Unable to submit grievance. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  /* ── Success screen ──────────────────────────────────── */
   if (submittedResult) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        <div className="bg-card border border-emerald-200 rounded-xl p-6 shadow-md space-y-5">
-          <div className="flex items-center space-x-3 text-emerald-600">
-            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center font-bold text-lg">
-              ✓
+        <div className="section-card border-emerald-200 space-y-5">
+          {/* Success header */}
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center flex-shrink-0">
+              <svg className="w-6 h-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground">Grievance Submitted Successfully!</h2>
-              <p className="text-xs text-muted-foreground">
-                Your complaint has been automatically processed, categorized, and dispatched.
+              <h2 className="text-lg font-bold text-foreground">Grievance Submitted Successfully</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Your complaint has been automatically processed, categorized, and dispatched by the AI pipeline.
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 p-4 bg-muted/40 rounded-lg text-sm">
+          {/* Details grid */}
+          <div className="rounded-xl bg-muted/40 border p-4 grid sm:grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-xs text-muted-foreground block font-medium">Grievance Number</span>
-              <strong className="text-base text-primary font-mono">{submittedResult.grievance_number}</strong>
+              <span className="text-xs text-muted-foreground font-medium block mb-1">Grievance Number</span>
+              <span className="font-mono font-bold text-primary text-base">{submittedResult.grievance_number}</span>
             </div>
-
             <div>
-              <span className="text-xs text-muted-foreground block font-medium">Status</span>
+              <span className="text-xs text-muted-foreground font-medium block mb-1">Status</span>
               <StatusBadge status={submittedResult.status} />
             </div>
-
             <div>
-              <span className="text-xs text-muted-foreground block font-medium">Auto-Classified Category</span>
+              <span className="text-xs text-muted-foreground font-medium block mb-1">Auto-Classified Category</span>
               <span className="font-semibold text-foreground">{submittedResult.category}</span>
             </div>
-
             <div>
-              <span className="text-xs text-muted-foreground block font-medium">Assigned Department</span>
+              <span className="text-xs text-muted-foreground font-medium block mb-1">Assigned Department</span>
               <span className="font-semibold text-foreground">
                 {submittedResult.department?.name || submittedResult.category}
               </span>
             </div>
-
             <div>
-              <span className="text-xs text-muted-foreground block font-medium">Priority Level</span>
+              <span className="text-xs text-muted-foreground font-medium block mb-1">Priority Level</span>
               <PriorityBadge priority={submittedResult.priority} />
             </div>
-
             <div>
-              <span className="text-xs text-muted-foreground block font-medium">Detected Language</span>
+              <span className="text-xs text-muted-foreground font-medium block mb-1">Detected Language</span>
               <span className="font-medium text-foreground">{submittedResult.detected_language || "English"}</span>
             </div>
           </div>
 
           <div className="border-t pt-4 flex flex-wrap gap-3">
-            <Button onClick={() => navigate(`/citizen/grievances/${submittedResult.id}`)}>
-              Track Grievance Details
+            <Button id="track-grievance-btn" onClick={() => navigate(`/citizen/grievances/${submittedResult.id}`)}>
+              Track Grievance
             </Button>
-            <Button variant="outline" onClick={() => { setSubmittedResult(null); setText(""); }}>
-              Submit Another Complaint
+            <Button variant="outline" onClick={() => { setSubmittedResult(null); setText("") }}>
+              Submit Another
             </Button>
             <Button variant="ghost" onClick={() => navigate("/citizen/grievances")}>
               View All Grievances
@@ -104,48 +101,66 @@ export function SubmitGrievance() {
     )
   }
 
+  /* ── Form ────────────────────────────────────────────── */
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="space-y-1">
-        <h2 className="text-2xl font-bold tracking-tight">Submit New Grievance</h2>
-        <p className="text-sm text-muted-foreground">
-          Describe your complaint in any official Indian language or English. Our AI microservice will automatically detect language, translate, determine priority, and route it to the appropriate department.
+      <div>
+        <h1 className="page-title">Submit New Grievance</h1>
+        <p className="page-subtitle mt-1">
+          Describe your complaint in any official Indian language or English. Our AI pipeline detects language, translates, determines priority, and routes automatically.
         </p>
       </div>
 
       {error && (
-        <div className="p-4 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg">
-          <strong>Submission Error:</strong> {error}
+        <div className="error-banner flex items-start gap-3">
+          <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-rose-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          <div>
+            <p className="font-semibold">Submission Error</p>
+            <p>{error}</p>
+          </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-card border rounded-xl p-6 shadow-sm space-y-5">
+      <form onSubmit={handleSubmit} className="section-card space-y-5">
         <div className="space-y-2">
-          <label className="text-sm font-semibold leading-none flex justify-between">
-            <span>Complaint Description *</span>
+          <div className="flex items-center justify-between">
+            <label htmlFor="grievance-text" className="form-label mb-0">
+              Complaint Description <span className="text-rose-500">*</span>
+            </label>
             <span className={`text-xs font-mono ${charCount > 5000 ? "text-rose-600 font-bold" : "text-muted-foreground"}`}>
-              {charCount} / 5000 chars
+              {charCount} / 5000
             </span>
-          </label>
+          </div>
           <textarea
+            id="grievance-text"
             required
-            rows={6}
+            rows={7}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Type or paste your complaint details here... (e.g. There has been no water supply in our locality for 3 days.)"
-            className="w-full px-3 py-2 border rounded-md text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary leading-relaxed"
+            placeholder="Type or paste your complaint here… (e.g., There has been no water supply in our locality for 3 days.)"
+            className="form-textarea"
           />
           {text.length > 0 && text.trim().length < 3 && (
-            <p className="text-xs text-rose-600 font-medium">Minimum 3 characters required.</p>
+            <p className="text-xs text-rose-600">Minimum 3 characters required.</p>
           )}
         </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800 space-y-1">
-          <p className="font-semibold">AI Automated Dispatch Pipeline Active:</p>
-          <p>You do not need to manually choose department, priority, or category. Our AI pipeline handles routing automatically upon submission.</p>
+        {/* AI pipeline info */}
+        <div className="info-banner flex items-start gap-3">
+          <svg className="w-4 h-4 mt-0.5 flex-shrink-0 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <p className="font-semibold text-sky-800 mb-0.5">AI Automated Dispatch Active</p>
+            <p className="text-sky-700">
+              No manual selection required — category, priority, and department are assigned automatically. You may write in Hindi, Tamil, Telugu, Kannada, Malayalam, Bengali, Gujarati, Marathi, Punjabi, Urdu, or English.
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center justify-end space-x-3 pt-2">
+        <div className="flex items-center justify-end gap-3 pt-1">
           <Button
             type="button"
             variant="outline"
@@ -154,8 +169,20 @@ export function SubmitGrievance() {
           >
             Cancel
           </Button>
-          <Button type="submit" disabled={!isValid || isSubmitting}>
-            {isSubmitting ? "Analyzing & Submitting..." : "Submit Grievance"}
+          <Button
+            id="grievance-submit-btn"
+            type="submit"
+            disabled={!isValid || isSubmitting}
+            className="gap-2"
+          >
+            {isSubmitting ? (
+              <>
+                <span className="spinner w-4 h-4" />
+                Analyzing & Submitting…
+              </>
+            ) : (
+              "Submit Grievance"
+            )}
           </Button>
         </div>
       </form>

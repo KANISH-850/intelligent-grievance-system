@@ -3,74 +3,59 @@ import { getOfficerAnalyticsApi } from "@/core/api/grievanceApi"
 import type { AnalyticsData } from "@/shared/types/grievance"
 import { Button } from "@/shared/ui/button"
 
+type PriorityKey = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
+
 export function OfficerAnalyticsView() {
-  const [data, setData] = useState<AnalyticsData | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [data, setData]      = useState<AnalyticsData | null>(null)
+  const [isLoading, setLoad] = useState(true)
+  const [error, setError]    = useState<string | null>(null)
 
   const loadAnalytics = useCallback(async () => {
-    setIsLoading(true)
+    setLoad(true)
     setError(null)
     try {
       const res = await getOfficerAnalyticsApi()
-      if (res.success && res.data) {
-        setData(res.data)
-      } else {
-        throw new Error(res.message || "Failed to load officer analytics.")
-      }
+      if (res.success && res.data) { setData(res.data) }
+      else throw new Error(res.message || "Failed to load officer analytics.")
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Unable to fetch analytics data."
-      setError(msg)
+      setError(err instanceof Error ? err.message : "Unable to fetch analytics.")
     } finally {
-      setIsLoading(false)
+      setLoad(false)
     }
   }, [])
 
   useEffect(() => {
     let isMounted = true
-
     getOfficerAnalyticsApi()
       .then((res) => {
         if (!isMounted) return
-        if (res.success && res.data) {
-          setData(res.data)
-          setError(null)
-        } else {
-          setError(res.message || "Failed to load officer analytics.")
-        }
+        if (res.success && res.data) { setData(res.data); setError(null) }
+        else setError(res.message || "Failed.")
       })
       .catch((err: unknown) => {
         if (!isMounted) return
-        const msg = err instanceof Error ? err.message : "Unable to fetch analytics data."
-        setError(msg)
+        setError(err instanceof Error ? err.message : "Unable to fetch analytics.")
       })
-      .finally(() => {
-        if (isMounted) {
-          setIsLoading(false)
-        }
-      })
-
-    return () => {
-      isMounted = false
-    }
+      .finally(() => { if (isMounted) setLoad(false) })
+    return () => { isMounted = false }
   }, [])
 
   if (isLoading) {
     return (
-      <div className="bg-card border rounded-xl p-12 text-center space-y-3">
-        <div className="inline-block w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-muted-foreground font-medium">Computing real-time departmental analytics...</p>
+      <div className="section-card">
+        <div className="empty-state">
+          <div className="spinner w-8 h-8 mx-auto" />
+          <p className="text-sm text-muted-foreground mt-3">Computing departmental analytics…</p>
+        </div>
       </div>
     )
   }
 
   if (error || !data) {
     return (
-      <div className="bg-rose-50 border border-rose-200 rounded-xl p-6 text-center space-y-3">
-        <p className="text-sm text-rose-700 font-medium">{error || "Analytics unavailable"}</p>
-        <Button variant="outline" onClick={loadAnalytics}>
-          Retry Analytics Query
-        </Button>
+      <div className="error-banner flex items-center justify-between">
+        <span>{error || "Analytics unavailable."}</span>
+        <Button variant="outline" size="sm" onClick={loadAnalytics}>Retry</Button>
       </div>
     )
   }
@@ -78,89 +63,81 @@ export function OfficerAnalyticsView() {
   const { summary, priority, categories, department } = data
   const total = summary.total || 1
 
+  const statusItems = [
+    { label: "Submitted",    count: summary.submitted,    color: "bg-blue-400" },
+    { label: "Assigned",     count: summary.assigned,     color: "bg-purple-400" },
+    { label: "Under Review", count: summary.under_review, color: "bg-amber-400" },
+    { label: "In Progress",  count: summary.in_progress,  color: "bg-indigo-400" },
+    { label: "Resolved",     count: summary.resolved,     color: "bg-emerald-500" },
+    { label: "Rejected",     count: summary.rejected,     color: "bg-rose-400" },
+  ]
+
+  const priorityItems: { label: string; key: PriorityKey; color: string; trackColor: string }[] = [
+    { label: "Critical", key: "CRITICAL", color: "bg-rose-600",  trackColor: "bg-rose-100" },
+    { label: "High",     key: "HIGH",     color: "bg-amber-500", trackColor: "bg-amber-100" },
+    { label: "Medium",   key: "MEDIUM",   color: "bg-sky-500",   trackColor: "bg-sky-100" },
+    { label: "Low",      key: "LOW",      color: "bg-slate-400", trackColor: "bg-slate-100" },
+  ]
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4 border-b pb-4">
+      <div className="page-header border-b pb-5">
         <div>
-          <div className="flex items-center space-x-3">
-            <h2 className="text-2xl font-bold tracking-tight">Departmental Workload Analytics</h2>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="page-title">Departmental Analytics</h1>
             {department?.code && (
-              <span className="px-2.5 py-1 text-xs font-bold rounded-md bg-primary text-primary-foreground font-mono">
+              <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-primary/10 text-primary border border-primary/20 font-mono">
                 {department.name} [{department.code}]
               </span>
             )}
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            Real-time PostgreSQL aggregation metrics isolated to your assigned government domain.
+          <p className="page-subtitle">
+            Real-time metrics for your assigned government domain.
           </p>
         </div>
+        <Button variant="outline" size="sm" onClick={loadAnalytics} className="gap-2">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh
+        </Button>
       </div>
 
-      {/* Summary KPI Grid */}
+      {/* KPI cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-card border rounded-xl p-5 shadow-sm space-y-1">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Total Domain Volume
-          </span>
-          <div className="text-3xl font-extrabold text-foreground">{summary.total}</div>
-          <p className="text-xs text-muted-foreground">Assigned grievances in database</p>
-        </div>
-
-        <div className="bg-card border rounded-xl p-5 shadow-sm space-y-1">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Resolution Rate
-          </span>
-          <div className="text-3xl font-extrabold text-emerald-600">{summary.resolution_rate}%</div>
-          <p className="text-xs text-muted-foreground">{summary.resolved} resolved out of {summary.total}</p>
-        </div>
-
-        <div className="bg-card border rounded-xl p-5 shadow-sm space-y-1">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            In-Progress Workload
-          </span>
-          <div className="text-3xl font-extrabold text-amber-600">{summary.in_progress}</div>
-          <p className="text-xs text-muted-foreground">Active officer investigation</p>
-        </div>
-
-        <div className="bg-card border rounded-xl p-5 shadow-sm space-y-1">
-          <span className="text-xs font-semibold text-rose-600 uppercase tracking-wider">
-            High / Critical Priority
-          </span>
-          <div className="text-3xl font-extrabold text-rose-700">{summary.high_critical_count}</div>
-          <p className="text-xs text-rose-600 font-medium">Requires immediate response</p>
-        </div>
+        {[
+          { label: "Total Domain Volume",   value: summary.total,            sub: "Assigned grievances",       accent: "text-foreground" },
+          { label: "Resolution Rate",       value: `${summary.resolution_rate}%`, sub: `${summary.resolved} resolved`, accent: "text-emerald-600" },
+          { label: "In-Progress Workload",  value: summary.in_progress,      sub: "Active investigation",      accent: "text-amber-600" },
+          { label: "High / Critical",       value: summary.high_critical_count, sub: "Immediate response needed", accent: "text-rose-600" },
+        ].map((k) => (
+          <div key={k.label} className="metric-card">
+            <p className="metric-label">{k.label}</p>
+            <p className={`metric-value ${k.accent}`}>{k.value}</p>
+            <p className="text-xs text-muted-foreground">{k.sub}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Charts Grid */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Status Distribution Chart */}
-        <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-foreground">Status Breakdown</h3>
-
+        {/* Status breakdown */}
+        <div className="section-card">
+          <h2 className="section-title">Status Breakdown</h2>
           <div className="space-y-3">
-            {[
-              { label: "Submitted", count: summary.submitted, color: "bg-blue-500" },
-              { label: "Assigned", count: summary.assigned, color: "bg-indigo-500" },
-              { label: "Under Review", count: summary.under_review, color: "bg-purple-500" },
-              { label: "In Progress", count: summary.in_progress, color: "bg-amber-500" },
-              { label: "Resolved", count: summary.resolved, color: "bg-emerald-500" },
-              { label: "Rejected", count: summary.rejected, color: "bg-rose-500" },
-            ].map((item) => {
+            {statusItems.map((item) => {
               const pct = Math.round((item.count / total) * 100)
               return (
-                <div key={item.label} className="space-y-1">
+                <div key={item.label} className="space-y-1.5">
                   <div className="flex justify-between text-xs font-medium">
-                    <span>{item.label}</span>
-                    <span className="font-mono text-muted-foreground">
-                      {item.count} ({pct}%)
+                    <span className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
+                      {item.label}
                     </span>
+                    <span className="font-mono text-muted-foreground">{item.count} ({pct}%)</span>
                   </div>
-                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${item.color} transition-all duration-500`}
-                      style={{ width: `${pct}%` }}
-                    />
+                  <div className="progress-bar-track">
+                    <div className={`progress-bar-fill ${item.color}`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               )
@@ -168,31 +145,24 @@ export function OfficerAnalyticsView() {
           </div>
         </div>
 
-        {/* Priority Severity Distribution */}
-        <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
-          <h3 className="text-base font-bold text-foreground">Priority Severity Rating</h3>
-
+        {/* Priority distribution */}
+        <div className="section-card">
+          <h2 className="section-title">Priority Distribution</h2>
           <div className="space-y-3">
-            {[
-              { label: "LOW", count: priority.LOW || 0, color: "bg-slate-400" },
-              { label: "MEDIUM", count: priority.MEDIUM || 0, color: "bg-blue-600" },
-              { label: "HIGH", count: priority.HIGH || 0, color: "bg-amber-600" },
-              { label: "CRITICAL", count: priority.CRITICAL || 0, color: "bg-rose-600" },
-            ].map((item) => {
-              const pct = Math.round((item.count / total) * 100)
+            {priorityItems.map((item) => {
+              const count = priority[item.key] || 0
+              const pct   = Math.round((count / total) * 100)
               return (
-                <div key={item.label} className="space-y-1">
+                <div key={item.key} className="space-y-1.5">
                   <div className="flex justify-between text-xs font-medium">
-                    <span className="font-bold">{item.label}</span>
-                    <span className="font-mono text-muted-foreground">
-                      {item.count} ({pct}%)
+                    <span className="flex items-center gap-2">
+                      <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
+                      {item.label}
                     </span>
+                    <span className="font-mono text-muted-foreground">{count} ({pct}%)</span>
                   </div>
-                  <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${item.color} transition-all duration-500`}
-                      style={{ width: `${pct}%` }}
-                    />
+                  <div className={`progress-bar-track ${item.trackColor}`}>
+                    <div className={`progress-bar-fill ${item.color}`} style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               )
@@ -201,25 +171,27 @@ export function OfficerAnalyticsView() {
         </div>
       </div>
 
-      {/* Categories Frequency List */}
-      <div className="bg-card border rounded-xl p-6 shadow-sm space-y-4">
-        <h3 className="text-base font-bold text-foreground">Top Complaint Categories</h3>
-
+      {/* Categories */}
+      <div className="section-card">
+        <h2 className="section-title">Top Complaint Categories</h2>
         {categories.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No category data recorded.</p>
+          <p className="text-xs text-muted-foreground">No category data available.</p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {categories.map((cat, idx) => (
-              <div
-                key={idx}
-                className="p-3 bg-muted/30 border rounded-lg flex items-center justify-between"
-              >
-                <span className="text-xs font-semibold text-foreground truncate">{cat.category}</span>
-                <span className="px-2 py-0.5 rounded text-xs font-mono font-bold bg-primary/10 text-primary">
-                  {cat.count}
-                </span>
-              </div>
-            ))}
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {categories
+              .sort((a, b) => b.count - a.count)
+              .map((cat, idx) => {
+                const pct = Math.round((cat.count / total) * 100)
+                return (
+                  <div key={idx} className="p-3 rounded-xl border bg-card flex items-center justify-between gap-2 hover:bg-muted/20 transition-colors">
+                    <span className="text-xs font-medium text-foreground truncate">{cat.category}</span>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <span className="text-xs font-mono font-bold text-primary">{cat.count}</span>
+                      <span className="text-[10px] text-muted-foreground">({pct}%)</span>
+                    </div>
+                  </div>
+                )
+              })}
           </div>
         )}
       </div>
