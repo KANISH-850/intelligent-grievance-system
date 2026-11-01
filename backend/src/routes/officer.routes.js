@@ -19,6 +19,12 @@ router.get("/grievances/:id/images/:imageId", officerController.serveOfficerGrie
 // Officer Department Status Update
 router.patch("/grievances/:id/status", officerController.updateGrievanceStatus);
 
+// Independent Department Assignment Routes
+router.get("/assignments", officerController.getOfficerAssignments);
+router.get("/assignments/:id", officerController.getOfficerAssignmentById);
+router.patch("/assignments/:id/status", officerController.updateAssignmentStatus);
+router.get("/assignments/:id/history", officerController.getAssignmentHistory);
+
 // Officer Department Analytics
 router.get("/analytics", officerController.getOfficerAnalytics);
 

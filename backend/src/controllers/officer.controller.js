@@ -45,18 +45,96 @@ const getOfficerGrievanceById = async (req, res, next) => {
 const updateGrievanceStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { status, remarks } = req.body;
+    const { status, remarks, resolution_description } = req.body;
 
     const updatedGrievance = await officerService.updateOfficerGrievanceStatus(
       id,
       req.user,
-      { status, remarks }
+      { status, remarks, resolution_description }
     );
 
     return res.status(200).json({
       success: true,
       message: "Grievance status updated successfully",
       data: updatedGrievance,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/v1/officer/assignments
+ * @desc    Get assignments for the authenticated officer's department
+ * @access  Private (Officer)
+ */
+const getOfficerAssignments = async (req, res, next) => {
+  try {
+    const assignments = await officerService.getDepartmentAssignments(req.user, req.query);
+    return res.status(200).json({
+      success: true,
+      data: assignments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/v1/officer/assignments/:id
+ * @desc    Get single assignment details with department authorization
+ * @access  Private (Officer)
+ */
+const getOfficerAssignmentById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const assignment = await officerService.getDepartmentAssignmentById(id, req.user);
+    return res.status(200).json({
+      success: true,
+      data: assignment,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   PATCH /api/v1/officer/assignments/:id/status
+ * @desc    Update single department assignment status independently
+ * @access  Private (Officer)
+ */
+const updateAssignmentStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { status, remarks, resolution_description } = req.body;
+    const result = await officerService.updateDepartmentAssignmentStatus(
+      id,
+      req.user,
+      { status, remarks, resolution_description }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Department assignment status updated successfully",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/v1/officer/assignments/:id/history
+ * @desc    Get assignment-specific status history
+ * @access  Private (Officer)
+ */
+const getAssignmentHistory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const history = await officerService.getAssignmentHistory(id, req.user);
+    return res.status(200).json({
+      success: true,
+      data: history,
     });
   } catch (error) {
     next(error);
@@ -117,6 +195,10 @@ module.exports = {
   getOfficerGrievances,
   getOfficerGrievanceById,
   updateGrievanceStatus,
+  getOfficerAssignments,
+  getOfficerAssignmentById,
+  updateAssignmentStatus,
+  getAssignmentHistory,
   getOfficerAnalytics,
   serveOfficerGrievanceImage,
 };

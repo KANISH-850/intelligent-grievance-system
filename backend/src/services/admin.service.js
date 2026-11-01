@@ -71,12 +71,19 @@ const getAdminGrievanceById = async (id) => {
       assignments: {
         include: {
           department: {
-            select: { id: true, name: true, code: true },
+            select: { id: true, name: true, code: true, description: true },
           },
           assigned_officer: {
             select: { id: true, name: true, email: true },
           },
+          history: {
+            include: {
+              user: { select: { id: true, name: true, role: true } },
+            },
+            orderBy: { created_at: "asc" },
+          },
         },
+        orderBy: { created_at: "asc" },
       },
       user: {
         select: {
