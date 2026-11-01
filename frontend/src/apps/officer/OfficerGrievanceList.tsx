@@ -209,7 +209,14 @@ export function OfficerGrievanceList() {
                       ) : null}
                     </td>
                     <td><PriorityBadge priority={g.priority} /></td>
-                    <td><StatusBadge status={g.status} /></td>
+                    <td>
+                      <StatusBadge status={g.officer_assignment?.status || g.status} />
+                      {g.officer_assignment && g.officer_assignment.status !== g.status && (
+                        <div className="text-[10px] text-muted-foreground mt-0.5" title={`Overall Grievance Status: ${g.status}`}>
+                          Overall: {g.status.replace("_", " ")}
+                        </div>
+                      )}
+                    </td>
                     <td className="text-xs text-muted-foreground">
                       <span>{g.detected_language || "English"}</span>
                       {g.translation_status === "translated" && (

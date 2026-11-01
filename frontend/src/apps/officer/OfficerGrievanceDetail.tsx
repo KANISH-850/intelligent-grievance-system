@@ -3,9 +3,11 @@ import { useParams, Link } from "react-router-dom"
 import {
   getOfficerGrievanceByIdApi,
   updateOfficerGrievanceStatusApi,
+  updateOfficerAssignmentStatusApi,
   fetchGrievanceImageBlob,
 } from "@/core/api/grievanceApi"
 import type { Grievance, GrievanceImage, Status } from "@/shared/types/grievance"
+import { useAuth } from "@/features/auth/AuthContext"
 import { StatusBadge } from "@/shared/ui/StatusBadge"
 import { PriorityBadge } from "@/shared/ui/PriorityBadge"
 import { StatusTimeline } from "@/shared/ui/StatusTimeline"
@@ -133,12 +135,17 @@ function ImageGallery({ grievanceId, images, routePrefix = "/grievances" }: { gr
 
 export function OfficerGrievanceDetail() {
   const { id } = useParams<{ id: string }>()
+  const { user } = useAuth()
   const [grievance, setGrievance]     = useState<Grievance | null>(null)
   const [isLoading, setIsLoading]     = useState(true)
   const [error, setError]             = useState<string | null>(null)
   const [isModalOpen, setModalOpen]   = useState(false)
   const [isSubmitting, setSubmitting] = useState(false)
   const [actionSuccess, setSuccess]   = useState<string | null>(null)
+
+  const myAssignment = grievance?.assignments?.find((a) => a.department_id === user?.department_id) || grievance?.officer_assignment || null
+  const myDeptStatus = myAssignment ? myAssignment.status : grievance?.status || "SUBMITTED"
+  const myDeptName = myAssignment?.department?.name || user?.department?.name || "Your Department"
 
   const loadDetail = useCallback(async () => {
     if (!id) return
@@ -175,12 +182,21 @@ export function OfficerGrievanceDetail() {
     return () => { isMounted = false }
   }, [id])
 
-  const handleStatusSubmit = async (status: Status, remarks: string) => {
+  const handleStatusSubmit = async (status: Status, remarks: string, resolution_description?: string) => {
     if (!id) return
     setSubmitting(true)
     setSuccess(null)
     try {
-      const res = await updateOfficerGrievanceStatusApi(id, status, remarks)
+      if (myAssignment?.id) {
+        const res = await updateOfficerAssignmentStatusApi(myAssignment.id, status, remarks, resolution_description)
+        if (res.success && res.data) {
+          setGrievance(res.data.grievance)
+          setModalOpen(false)
+          setSuccess(`Your department (${myDeptName}) assignment status updated to ${status}.`)
+          return
+        }
+      }
+      const res = await updateOfficerGrievanceStatusApi(id, status, remarks, resolution_description)
       if (res.success && res.data) {
         setGrievance(res.data)
         setModalOpen(false)
@@ -243,7 +259,16 @@ export function OfficerGrievanceDetail() {
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="text-xl font-bold font-mono text-primary">{grievance.grievance_number}</h1>
-            <StatusBadge status={grievance.status} />
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-primary/5 border border-primary/20">
+              <span className="text-xs font-semibold text-primary">{myDeptName}:</span>
+              <StatusBadge status={myDeptStatus} />
+            </div>
+            {myDeptStatus !== grievance.status && (
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-muted/60 text-xs text-muted-foreground border">
+                <span>Overall:</span>
+                <StatusBadge status={grievance.status} />
+              </div>
+            )}
             <PriorityBadge priority={grievance.priority} />
             {grievance.ai_review_required && (
               <span className="px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 rounded-full animate-pulse">
@@ -258,7 +283,7 @@ export function OfficerGrievanceDetail() {
 
         <div className="flex items-center gap-2">
           <Button id="officer-update-status-btn" onClick={() => setModalOpen(true)}>
-            Update Status
+            Update Your Dept Status
           </Button>
           <Link to="/officer/grievances">
             <Button variant="outline" className="gap-1">
@@ -355,39 +380,101 @@ export function OfficerGrievanceDetail() {
           {grievance.assignments && grievance.assignments.length > 0 && (
             <div className="section-card space-y-3">
               <h2 className="section-title flex items-center justify-between">
-                <span>Department Assignments & Routing Evidence</span>
+                <span>Department Assignments & Independent Progress</span>
                 <span className="text-xs font-normal text-muted-foreground">
                   ({grievance.assignments.length} {grievance.assignments.length === 1 ? "Department" : "Departments"} Assigned)
                 </span>
               </h2>
-              <div className="space-y-2.5">
-                {grievance.assignments.map((assign) => (
-                  <div key={assign.id} className="p-3 rounded-lg border bg-card/60 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-foreground">
-                          {assign.department?.name || "Department"}
-                        </span>
-                        {assign.department?.code && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
-                            {assign.department.code}
+              <div className="space-y-3">
+                {grievance.assignments.map((assign) => {
+                  const isMine = assign.department_id === user?.department_id;
+                  return (
+                    <div
+                      key={assign.id}
+                      className={`p-3.5 rounded-xl border space-y-2 transition-all ${
+                        isMine
+                          ? "bg-primary/5 border-primary/40 ring-1 ring-primary/20"
+                          : "bg-card/60 border-border"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-sm text-foreground">
+                            {assign.department?.name || "Department"}
                           </span>
+                          {assign.department?.code && (
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                              {assign.department.code}
+                            </span>
+                          )}
+                          {isMine ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              Your Department (Authorized to Update)
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] text-muted-foreground bg-muted border">
+                              Read Only
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={assign.status} />
+                          {isMine && (
+                            <Button size="sm" variant="outline" className="text-xs h-7 px-2" onClick={() => setModalOpen(true)}>
+                              Update Status
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+
+                      {assign.routing_reason && (
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                          <strong className="text-foreground/80 font-medium">Routing Rationale:</strong> {assign.routing_reason}
+                        </p>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-muted-foreground pt-1 border-t">
+                        <div>
+                          <span>Assigned Officer: </span>
+                          <strong className="text-foreground font-medium">
+                            {assign.assigned_officer?.name || "Pending officer assignment"}
+                          </strong>
+                        </div>
+                        <div>
+                          <span>Assigned At: </span>
+                          <span className="font-mono">{new Date(assign.created_at).toLocaleString("en-IN")}</span>
+                        </div>
+                        {assign.started_at && (
+                          <div>
+                            <span>Work Started: </span>
+                            <span className="font-mono text-indigo-700">{new Date(assign.started_at).toLocaleString("en-IN")}</span>
+                          </div>
+                        )}
+                        {assign.resolved_at && (
+                          <div>
+                            <span>Resolved At: </span>
+                            <span className="font-mono text-emerald-700">{new Date(assign.resolved_at).toLocaleString("en-IN")}</span>
+                          </div>
                         )}
                       </div>
-                      <StatusBadge status={assign.status} />
+
+                      {(assign.resolution_description || assign.remarks || assign.notes) && (
+                        <div className="space-y-1.5 pt-1">
+                          {assign.resolution_description && (
+                            <p className="text-xs text-emerald-900 bg-emerald-50 px-2.5 py-1.5 rounded border border-emerald-200">
+                              <strong>Resolution Outcome:</strong> {assign.resolution_description}
+                            </p>
+                          )}
+                          {(assign.remarks || assign.notes) && (
+                            <p className="text-xs text-sky-900 bg-sky-50 px-2.5 py-1 rounded border border-sky-200">
+                              <strong>Department Remarks:</strong> {assign.remarks || assign.notes}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    {assign.routing_reason && (
-                      <p className="text-xs text-muted-foreground leading-relaxed">
-                        <strong className="text-foreground/80 font-medium">Routing Rationale:</strong> {assign.routing_reason}
-                      </p>
-                    )}
-                    {assign.notes && (
-                      <p className="text-xs text-sky-800 bg-sky-50 px-2 py-1 rounded border border-sky-200">
-                        <strong>Department Notes:</strong> {assign.notes}
-                      </p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -471,7 +558,8 @@ export function OfficerGrievanceDetail() {
       </div>
 
       <UpdateStatusModal
-        currentStatus={grievance.status}
+        currentStatus={myDeptStatus}
+        departmentName={myDeptName}
         isOpen={isModalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleStatusSubmit}

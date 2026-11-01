@@ -175,10 +175,28 @@ export function GrievanceList() {
                   <tr key={g.id}>
                     <td>
                       <span className="font-mono font-bold text-primary text-xs">{g.grievance_number}</span>
+                      {g.assignments && g.assignments.length > 1 && (
+                        <div className="mt-0.5">
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                            Multi-Dept ({g.assignments.length})
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="font-medium text-xs max-w-[130px] truncate">{g.category}</td>
-                    <td className="text-xs text-muted-foreground max-w-[140px] truncate">
-                      {g.department?.name || g.category}
+                    <td className="text-xs text-muted-foreground max-w-[160px]">
+                      {g.assignments && g.assignments.length > 1 ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-medium text-foreground truncate">
+                            {g.assignments.map((a) => a.department?.code || a.department?.name).filter(Boolean).join(", ")}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {g.assignments.length} departments assigned
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="truncate">{g.department?.name || g.category}</span>
+                      )}
                     </td>
                     <td><PriorityBadge priority={g.priority} /></td>
                     <td><StatusBadge status={g.status} /></td>

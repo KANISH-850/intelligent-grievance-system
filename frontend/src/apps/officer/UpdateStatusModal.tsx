@@ -5,9 +5,10 @@ import { Button } from "@/shared/ui/button"
 
 interface UpdateStatusModalProps {
   currentStatus: Status
+  departmentName?: string
   isOpen: boolean
   onClose: () => void
-  onSubmit: (status: Status, remarks: string) => Promise<void>
+  onSubmit: (status: Status, remarks: string, resolution_description?: string) => Promise<void>
   isSubmitting: boolean
 }
 
@@ -22,6 +23,7 @@ const OFFICER_TARGET_STATUSES: { label: string; value: Status }[] = [
 
 export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
   currentStatus,
+  departmentName,
   isOpen,
   onClose,
   onSubmit,
@@ -30,8 +32,9 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
   const [targetStatus, setTarget] = useState<Status>(
     currentStatus === "SUBMITTED" ? "UNDER_REVIEW" : currentStatus
   )
-  const [remarks, setRemarks]               = useState("")
-  const [validationError, setValidationErr] = useState<string | null>(null)
+  const [remarks, setRemarks]                               = useState("")
+  const [resolutionDescription, setResolutionDescription]   = useState("")
+  const [validationError, setValidationErr]                 = useState<string | null>(null)
 
   if (!isOpen) return null
 
@@ -42,7 +45,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
     setValidationErr(null)
 
     if (targetStatus === currentStatus) {
-      setValidationErr(`Grievance is already in status '${currentStatus}'. Please choose a different status.`)
+      setValidationErr(`Assignment is already in status '${currentStatus}'. Please choose a different status.`)
       return
     }
     if (isRemarksRequired && !remarks.trim()) {
@@ -50,7 +53,7 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
       return
     }
     try {
-      await onSubmit(targetStatus, remarks.trim())
+      await onSubmit(targetStatus, remarks.trim(), resolutionDescription.trim() || undefined)
     } catch (err: unknown) {
       setValidationErr(err instanceof Error ? err.message : "Failed to update status.")
     }
@@ -62,7 +65,9 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
         {/* Modal header */}
         <div className="flex items-center justify-between px-6 py-4 border-b bg-muted/30">
           <div>
-            <h3 className="font-bold text-base">Update Grievance Status</h3>
+            <h3 className="font-bold text-base">
+              Update Department Progress {departmentName ? `· ${departmentName}` : ""}
+            </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
               Current status: <StatusBadge status={currentStatus} />
             </p>
@@ -125,16 +130,32 @@ export const UpdateStatusModal: React.FC<UpdateStatusModalProps> = ({
             </div>
           </div>
 
+          {targetStatus === "RESOLVED" && (
+            <div className="space-y-1.5 p-3 rounded-lg bg-emerald-50/60 border border-emerald-200">
+              <label htmlFor="resolution-desc" className="form-label text-xs font-semibold text-emerald-900 mb-0">
+                Resolution Summary / Action Taken
+              </label>
+              <textarea
+                id="resolution-desc"
+                rows={2}
+                value={resolutionDescription}
+                onChange={(e) => setResolutionDescription(e.target.value)}
+                placeholder="e.g. Pipeline leak sealed, water supply restored, area sanitized."
+                className="form-textarea bg-white text-xs"
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label htmlFor="status-remarks" className="form-label text-xs uppercase tracking-wider text-muted-foreground mb-0">
-                Officer Remarks {isRemarksRequired ? <span className="text-rose-500">*</span> : "(optional)"}
+                Department Remarks {isRemarksRequired ? <span className="text-rose-500">*</span> : "(optional)"}
               </label>
               <span className="text-[10px] text-muted-foreground">{remarks.length} / 2000</span>
             </div>
             <textarea
               id="status-remarks"
-              rows={4}
+              rows={3}
               value={remarks}
               onChange={(e) => setRemarks(e.target.value)}
               maxLength={2000}
