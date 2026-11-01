@@ -1,6 +1,6 @@
 # 🏛️ Intelligent Multilingual Grievance Categorization & Automated Dispatch Framework
 
-> **CPGRAMS-Integrated AI Platform** — An end-to-end intelligent system for automating citizen grievance submission, multilingual classification, priority prediction, departmental routing, and real-time status tracking for Central Government Portals.
+> **Multilingual Grievance Redressal Framework (CPGRAMS-Inspired Prototype)** — An end-to-end intelligent system for automating citizen grievance submission, multilingual classification, priority prediction, departmental routing, and real-time status tracking, evaluated on curated benchmark datasets modeled after the CPGRAMS taxonomy with human-in-the-loop governance.
 
 [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2F%20Express-green?logo=node.js)](https://nodejs.org)
 [![AI Service](https://img.shields.io/badge/AI%20Service-Python%20%2F%20FastAPI-blue?logo=python)](https://fastapi.tiangolo.com)
@@ -49,7 +49,7 @@
 
 ## 🎯 Project Overview
 
-The **Intelligent Multilingual Grievance Categorization and Automated Dispatch Framework** is a full-stack AI-powered platform designed to modernize citizen grievance redressal for Central Government portals (modelled on CPGRAMS).
+The **Intelligent Multilingual Grievance Categorization and Automated Dispatch Framework** is a full-stack AI-powered prototype platform designed to demonstrate modern citizen grievance redressal workflows modeled on Central Government portal taxonomies (CPGRAMS).
 
 Citizens can submit grievances in **11 official Indian languages**. The system automatically:
 1. **Detects** the language of the submission
@@ -225,10 +225,9 @@ intelligent-grievance-system/
 │   │   ├── routes/               # analyze.py, chatbot.py, health.py
 │   │   ├── schemas/              # grievance.py (request/response models)
 │   │   └── services/
-│   │       ├── ml/               # model_loader.py, classifier.py
+│   │       ├── ml/               # model_loader.py, classifier.py, predictor.py
 │   │       ├── language_detector.py
 │   │       ├── preprocessor.py
-│   │       ├── priority_predictor.py
 │   │       └── department_router.py
 │   ├── models/
 │   │   └── grievance-classifier/ # model.joblib + config.json
@@ -305,7 +304,7 @@ Citizen Input (any language)
  → Pass-through (IndicTrans2 optional)
          │
          ▼
- ML Classification (classifier.py)
+ ML Classification (ml/classifier.py)
  → TF-IDF Vectorizer + Logistic Regression
  → Returns: category, confidence (0.0–1.0)
          │
@@ -314,7 +313,7 @@ Citizen Input (any language)
          └── confidence < 0.50 → Rule-based keyword fallback
          │
          ▼
- Priority Prediction (priority_predictor.py)
+ Priority Prediction (ml/predictor.py)
  → CRITICAL / HIGH / MEDIUM / LOW
          │
          ▼
@@ -445,6 +444,18 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/intelligent_grievance
 JWT_SECRET=your-secret-key-minimum-32-characters
 JWT_EXPIRES_IN=1d
 AI_SERVICE_URL=http://localhost:8001
+```
+
+### AI Service (`ai-service/.env`)
+```env
+TRANSLATION_PROVIDER=libretranslate
+TRANSLATION_API_URL=https://libretranslate.de/translate
+TRANSLATION_API_KEY=your-libretranslate-key-optional
+VISION_API_URL=https://api.openai.com/v1/chat/completions
+VISION_API_KEY=your-vision-api-key
+VISION_MODEL=gpt-4o-mini
+AI_CONFIDENCE_THRESHOLD=0.75
+AI_LOW_CONFIDENCE_THRESHOLD=0.50
 ```
 
 ### Frontend (`frontend/.env`)
