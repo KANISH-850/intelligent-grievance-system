@@ -1,0 +1,31 @@
+MobileNetV3-Small-Civic Classification Report
+============================================================
+Checkpoint: civic_mobilenet_v3_best.pth
+Evaluation Date: 2026-11-01 16:33:34
+Total Evaluated Test Samples: 38
+
+                               precision    recall  f1-score   support
+
+             blocked_drainage     0.1429    0.2500    0.1818         4
+           broken_streetlight     0.6250    0.8333    0.7143         6
+damaged_public_infrastructure     0.0000    0.0000    0.0000         1
+     exposed_electrical_wires     0.0000    0.0000    0.0000         2
+              garbage_dumping     0.5000    1.0000    0.6667         5
+          pothole_road_damage     0.5000    0.2500    0.3333         4
+           unrelated_negative     0.7500    0.6667    0.7059         9
+                water_leakage     1.0000    0.2500    0.4000         4
+                 waterlogging     0.0000    0.0000    0.0000         3
+
+                     accuracy                         0.5000        38
+                    macro avg     0.3909    0.3611    0.3336        38
+                 weighted avg     0.5150    0.5000    0.4640        38
+
+Summary Averages:
+Overall Accuracy:  0.5000
+Macro Precision:   0.3909
+Macro Recall:      0.3611
+Macro F1-Score:    0.3336
+Weighted F1-Score: 0.4640
+Micro F1-Score:    0.5000
+Mean CPU Latency:  146.62 ms
+P95 CPU Latency:   253.36 ms

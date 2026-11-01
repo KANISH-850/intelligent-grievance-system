@@ -1,0 +1,10 @@
+class,precision,recall,f1_score,support
+blocked_drainage,0.1429,0.25,0.1818,4
+broken_streetlight,0.625,0.8333,0.7143,6
+damaged_public_infrastructure,0.0,0.0,0.0,1
+exposed_electrical_wires,0.0,0.0,0.0,2
+garbage_dumping,0.5,1.0,0.6667,5
+pothole_road_damage,0.5,0.25,0.3333,4
+unrelated_negative,0.75,0.6667,0.7059,9
+water_leakage,1.0,0.25,0.4,4
+waterlogging,0.0,0.0,0.0,3
