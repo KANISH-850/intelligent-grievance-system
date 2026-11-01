@@ -451,9 +451,8 @@ AI_SERVICE_URL=http://localhost:8001
 TRANSLATION_PROVIDER=libretranslate
 TRANSLATION_API_URL=https://libretranslate.de/translate
 TRANSLATION_API_KEY=your-libretranslate-key-optional
-VISION_API_URL=https://api.openai.com/v1/chat/completions
-VISION_API_KEY=your-vision-api-key
-VISION_MODEL=gpt-4o-mini
+# Image classification is handled locally by fine-tuned MobileNetV3-Small-Civic (PyTorch).
+# No external vision API key or endpoint required.
 AI_CONFIDENCE_THRESHOLD=0.75
 AI_LOW_CONFIDENCE_THRESHOLD=0.50
 ```
