@@ -1,0 +1,497 @@
+{
+  "evaluation_dataset": "civic_real_world/splits/test",
+  "total_test_samples": 38,
+  "overall_metrics": {
+    "accuracy": 0.5,
+    "macro_precision": 0.3909,
+    "macro_recall": 0.3611,
+    "macro_f1": 0.3336,
+    "weighted_f1": 0.464
+  },
+  "performance_latency": {
+    "device": "CPU",
+    "avg_latency_ms": 36.47,
+    "p95_latency_ms": 59.37,
+    "min_latency_ms": 20.67,
+    "max_latency_ms": 66.41
+  },
+  "unrelated_rejection": {
+    "unrelated_samples": 9,
+    "correctly_rejected": 6,
+    "false_positive_rate": 0.3333
+  },
+  "per_class_metrics": {
+    "blocked_drainage": {
+      "precision": 0.1429,
+      "recall": 0.25,
+      "f1_score": 0.1818,
+      "support": 4
+    },
+    "broken_streetlight": {
+      "precision": 0.625,
+      "recall": 0.8333,
+      "f1_score": 0.7143,
+      "support": 6
+    },
+    "damaged_public_infrastructure": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 1
+    },
+    "exposed_electrical_wires": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 2
+    },
+    "garbage_dumping": {
+      "precision": 0.5,
+      "recall": 1.0,
+      "f1_score": 0.6667,
+      "support": 5
+    },
+    "pothole_road_damage": {
+      "precision": 0.5,
+      "recall": 0.25,
+      "f1_score": 0.3333,
+      "support": 4
+    },
+    "unrelated_negative": {
+      "precision": 0.75,
+      "recall": 0.6667,
+      "f1_score": 0.7059,
+      "support": 9
+    },
+    "water_leakage": {
+      "precision": 1.0,
+      "recall": 0.25,
+      "f1_score": 0.4,
+      "support": 4
+    },
+    "waterlogging": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1_score": 0.0,
+      "support": 3
+    }
+  },
+  "classes": [
+    "blocked_drainage",
+    "broken_streetlight",
+    "damaged_public_infrastructure",
+    "exposed_electrical_wires",
+    "garbage_dumping",
+    "pothole_road_damage",
+    "unrelated_negative",
+    "water_leakage",
+    "waterlogging"
+  ],
+  "confusion_matrix": [
+    [
+      1,
+      0,
+      0,
+      0,
+      2,
+      0,
+      0,
+      0,
+      1
+    ],
+    [
+      0,
+      5,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      5,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      2,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1,
+      0,
+      0
+    ],
+    [
+      2,
+      0,
+      0,
+      0,
+      0,
+      0,
+      6,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      3,
+      0,
+      0,
+      1,
+      0
+    ],
+    [
+      0,
+      2,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+    ]
+  ],
+  "test_cases": [
+    {
+      "image_id": "blocked_drainage_021.jpg",
+      "actual_class": "blocked_drainage",
+      "predicted_class": "garbage_dumping",
+      "confidence": 0.2836,
+      "correct": false,
+      "inference_time_ms": 66.41
+    },
+    {
+      "image_id": "blocked_drainage_022.jpg",
+      "actual_class": "blocked_drainage",
+      "predicted_class": "waterlogging",
+      "confidence": 0.1735,
+      "correct": false,
+      "inference_time_ms": 45.6
+    },
+    {
+      "image_id": "blocked_drainage_023.jpg",
+      "actual_class": "blocked_drainage",
+      "predicted_class": "garbage_dumping",
+      "confidence": 0.1945,
+      "correct": false,
+      "inference_time_ms": 34.65
+    },
+    {
+      "image_id": "blocked_drainage_024.jpg",
+      "actual_class": "blocked_drainage",
+      "predicted_class": "blocked_drainage",
+      "confidence": 0.3895,
+      "correct": true,
+      "inference_time_ms": 42.12
+    },
+    {
+      "image_id": "broken_streetlight_037.jpg",
+      "actual_class": "broken_streetlight",
+      "predicted_class": "broken_streetlight",
+      "confidence": 0.3418,
+      "correct": true,
+      "inference_time_ms": 31.89
+    },
+    {
+      "image_id": "broken_streetlight_038.jpg",
+      "actual_class": "broken_streetlight",
+      "predicted_class": "broken_streetlight",
+      "confidence": 0.4776,
+      "correct": true,
+      "inference_time_ms": 23.57
+    },
+    {
+      "image_id": "broken_streetlight_039.jpg",
+      "actual_class": "broken_streetlight",
+      "predicted_class": "broken_streetlight",
+      "confidence": 0.5075,
+      "correct": true,
+      "inference_time_ms": 32.33
+    },
+    {
+      "image_id": "broken_streetlight_040.jpg",
+      "actual_class": "broken_streetlight",
+      "predicted_class": "broken_streetlight",
+      "confidence": 0.3982,
+      "correct": true,
+      "inference_time_ms": 23.05
+    },
+    {
+      "image_id": "broken_streetlight_041.jpg",
+      "actual_class": "broken_streetlight",
+      "predicted_class": "pothole_road_damage",
+      "confidence": 0.2809,
+      "correct": false,
+      "inference_time_ms": 20.67
+    },
+    {
+      "image_id": "broken_streetlight_042.jpg",
+      "actual_class": "broken_streetlight",
+      "predicted_class": "broken_streetlight",
+      "confidence": 0.3716,
+      "correct": true,
+      "inference_time_ms": 45.04
+    },
+    {
+      "image_id": "damaged_public_infrastructure_006.jpg",
+      "actual_class": "damaged_public_infrastructure",
+      "predicted_class": "broken_streetlight",
+      "confidence": 0.1979,
+      "correct": false,
+      "inference_time_ms": 58.79
+    },
+    {
+      "image_id": "exposed_electrical_wires_011.jpg",
+      "actual_class": "exposed_electrical_wires",
+      "predicted_class": "blocked_drainage",
+      "confidence": 0.2102,
+      "correct": false,
+      "inference_time_ms": 29.77
+    },
+    {
+      "image_id": "exposed_electrical_wires_012.jpg",
+      "actual_class": "exposed_electrical_wires",
+      "predicted_class": "blocked_drainage",
+      "confidence": 0.241,
+      "correct": false,
+      "inference_time_ms": 42.62
+    },
+    {
+      "image_id": "garbage_dumping_027.jpg",
+      "actual_class": "garbage_dumping",
+      "predicted_class": "garbage_dumping",
+      "confidence": 0.2724,
+      "correct": true,
+      "inference_time_ms": 38.88
+    },
+    {
+      "image_id": "garbage_dumping_028.jpg",
+      "actual_class": "garbage_dumping",
+      "predicted_class": "garbage_dumping",
+      "confidence": 0.3246,
+      "correct": true,
+      "inference_time_ms": 34.02
+    },
+    {
+      "image_id": "garbage_dumping_029.jpg",
+      "actual_class": "garbage_dumping",
+      "predicted_class": "garbage_dumping",
+      "confidence": 0.342,
+      "correct": true,
+      "inference_time_ms": 25.32
+    },
+    {
+      "image_id": "garbage_dumping_030.jpg",
+      "actual_class": "garbage_dumping",
+      "predicted_class": "garbage_dumping",
+      "confidence": 0.2443,
+      "correct": true,
+      "inference_time_ms": 28.21
+    },
+    {
+      "image_id": "garbage_dumping_031.jpg",
+      "actual_class": "garbage_dumping",
+      "predicted_class": "garbage_dumping",
+      "confidence": 0.2562,
+      "correct": true,
+      "inference_time_ms": 32.06
+    },
+    {
+      "image_id": "pothole_road_damage_025.jpg",
+      "actual_class": "pothole_road_damage",
+      "predicted_class": "unrelated_negative",
+      "confidence": 0.2659,
+      "correct": false,
+      "inference_time_ms": 31.86
+    },
+    {
+      "image_id": "pothole_road_damage_026.jpg",
+      "actual_class": "pothole_road_damage",
+      "predicted_class": "pothole_road_damage",
+      "confidence": 0.2205,
+      "correct": true,
+      "inference_time_ms": 39.13
+    },
+    {
+      "image_id": "pothole_road_damage_027.jpg",
+      "actual_class": "pothole_road_damage",
+      "predicted_class": "blocked_drainage",
+      "confidence": 0.1839,
+      "correct": false,
+      "inference_time_ms": 31.55
+    },
+    {
+      "image_id": "pothole_road_damage_028.jpg",
+      "actual_class": "pothole_road_damage",
+      "predicted_class": "blocked_drainage",
+      "confidence": 0.296,
+      "correct": false,
+      "inference_time_ms": 22.73
+    },
+    {
+      "image_id": "unrelated_negative_051.jpg",
+      "actual_class": "unrelated_negative",
+      "predicted_class": "unrelated_negative",
+      "confidence": 0.5465,
+      "correct": true,
+      "inference_time_ms": 34.81
+    },
+    {
+      "image_id": "unrelated_negative_052.jpg",
+      "actual_class": "unrelated_negative",
+      "predicted_class": "blocked_drainage",
+      "confidence": 0.1644,
+      "correct": false,
+      "inference_time_ms": 52.8
+    },
+    {
+      "image_id": "unrelated_negative_053.jpg",
+      "actual_class": "unrelated_negative",
+      "predicted_class": "blocked_drainage",
+      "confidence": 0.2423,
+      "correct": false,
+      "inference_time_ms": 36.57
+    },
+    {
+      "image_id": "unrelated_negative_054.jpg",
+      "actual_class": "unrelated_negative",
+      "predicted_class": "unrelated_negative",
+      "confidence": 0.2292,
+      "correct": true,
+      "inference_time_ms": 43.82
+    },
+    {
+      "image_id": "unrelated_negative_055.jpg",
+      "actual_class": "unrelated_negative",
+      "predicted_class": "waterlogging",
+      "confidence": 0.2127,
+      "correct": false,
+      "inference_time_ms": 25.08
+    },
+    {
+      "image_id": "unrelated_negative_056.jpg",
+      "actual_class": "unrelated_negative",
+      "predicted_class": "unrelated_negative",
+      "confidence": 0.682,
+      "correct": true,
+      "inference_time_ms": 33.04
+    },
+    {
+      "image_id": "unrelated_negative_057.jpg",
+      "actual_class": "unrelated_negative",
+      "predicted_class": "unrelated_negative",
+      "confidence": 0.5193,
+      "correct": true,
+      "inference_time_ms": 29.39
+    },
+    {
+      "image_id": "unrelated_negative_058.jpg",
+      "actual_class": "unrelated_negative",
+      "predicted_class": "unrelated_negative",
+      "confidence": 0.4746,
+      "correct": true,
+      "inference_time_ms": 30.28
+    },
+    {
+      "image_id": "unrelated_negative_059.jpg",
+      "actual_class": "unrelated_negative",
+      "predicted_class": "unrelated_negative",
+      "confidence": 0.4848,
+      "correct": true,
+      "inference_time_ms": 26.01
+    },
+    {
+      "image_id": "water_leakage_022.jpg",
+      "actual_class": "water_leakage",
+      "predicted_class": "water_leakage",
+      "confidence": 0.1996,
+      "correct": true,
+      "inference_time_ms": 20.82
+    },
+    {
+      "image_id": "water_leakage_023.jpg",
+      "actual_class": "water_leakage",
+      "predicted_class": "garbage_dumping",
+      "confidence": 0.2592,
+      "correct": false,
+      "inference_time_ms": 24.79
+    },
+    {
+      "image_id": "water_leakage_024.jpg",
+      "actual_class": "water_leakage",
+      "predicted_class": "garbage_dumping",
+      "confidence": 0.2176,
+      "correct": false,
+      "inference_time_ms": 25.7
+    },
+    {
+      "image_id": "water_leakage_025.jpg",
+      "actual_class": "water_leakage",
+      "predicted_class": "garbage_dumping",
+      "confidence": 0.2745,
+      "correct": false,
+      "inference_time_ms": 54.36
+    },
+    {
+      "image_id": "waterlogging_019.jpg",
+      "actual_class": "waterlogging",
+      "predicted_class": "unrelated_negative",
+      "confidence": 0.2048,
+      "correct": false,
+      "inference_time_ms": 62.65
+    },
+    {
+      "image_id": "waterlogging_020.jpg",
+      "actual_class": "waterlogging",
+      "predicted_class": "broken_streetlight",
+      "confidence": 0.1518,
+      "correct": false,
+      "inference_time_ms": 47.75
+    },
+    {
+      "image_id": "waterlogging_021.jpg",
+      "actual_class": "waterlogging",
+      "predicted_class": "broken_streetlight",
+      "confidence": 0.3857,
+      "correct": false,
+      "inference_time_ms": 57.54
+    }
+  ]
+}
