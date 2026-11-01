@@ -40,7 +40,7 @@ const handleChatbotMessage = async (userId, message, sessionContext = null) => {
     intent: aiResult.intent || "UNKNOWN",
     grievance_number: aiResult.grievance_number || null,
     grievance: aiResult.grievance || null,
-    confidence: typeof aiResult.confidence === "number" ? aiResult.confidence : 1.0,
+    confidence: typeof aiResult.confidence === "number" ? aiResult.confidence : null,
     data: aiResult.data || {},
     session_context: aiResult.session_context || null,
     explanation_terms: aiResult.explanation_terms || [],
