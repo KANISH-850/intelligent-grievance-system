@@ -35,8 +35,14 @@ export interface Grievance {
   user_id: string
   original_text: string
   detected_language: string | null
+  detected_language_code?: string | null
   translated_text: string | null
+  translation_status?: string | null
+  translation_method?: string | null
+  translation_error?: string | null
+  translated_at?: string | null
   category: string
+  routing_status?: string
   priority: Priority
   department_id: string
   status: Status
@@ -53,13 +59,51 @@ export interface Grievance {
   human_corrected_by?: string | null
   human_corrected_at?: string | null
   department?: Department
+  assignments?: DepartmentAssignment[]
   user?: {
     id: string
     name: string
     email: string
   }
   status_history?: GrievanceStatusHistory[]
+  images?: GrievanceImage[]
 }
+
+export interface DepartmentAssignment {
+  id: string
+  grievance_id: string
+  department_id: string
+  status: Status
+  routing_reason?: string | null
+  assigned_officer_id?: string | null
+  notes?: string | null
+  created_at: string
+  updated_at: string
+  department?: Department
+  assigned_officer?: {
+    id: string
+    name: string
+    email: string
+  } | null
+}
+
+export interface GrievanceImage {
+  id: string;
+  grievance_id: string;
+  filename: string;
+  mime_type: string;
+  size: number;
+  path: string;
+  analysis_status?: string | null;
+  image_type?: "civic_issue" | "unrelated" | "uncertain" | null;
+  is_grievance_related?: boolean;
+  image_description?: string | null;
+  detected_issue?: string | null;
+  visual_observations?: string[];
+  analysis_confidence?: number | null;
+  human_review_required?: boolean;
+}
+
 
 export interface CorrectClassificationPayload {
   category: string

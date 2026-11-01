@@ -22,8 +22,8 @@ const DEFAULT_CONFIG = {
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, className = "" }) => {
-  const config = BADGE_CONFIG[status] ?? DEFAULT_CONFIG
-  const label  = config.label || status.replace(/_/g, " ")
+  const config = (status && BADGE_CONFIG[status]) ? BADGE_CONFIG[status] : DEFAULT_CONFIG
+  const label  = config.label || (typeof status === "string" ? status.replace(/_/g, " ") : "Unknown")
 
   return (
     <span
