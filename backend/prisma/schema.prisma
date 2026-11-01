@@ -27,6 +27,7 @@ enum Status {
   ASSIGNED
   UNDER_REVIEW
   IN_PROGRESS
+  PARTIALLY_RESOLVED
   RESOLVED
   REJECTED
 }
@@ -46,6 +47,7 @@ model User {
   status_changes         GrievanceStatusHistory[]
   notifications          Notification[]
   department_assignments GrievanceDepartmentAssignment[] @relation("OfficerDepartmentAssignments")
+  assignment_histories   GrievanceAssignmentHistory[]
 
   @@map("users")
 }
@@ -58,9 +60,10 @@ model Department {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  users       User[]
-  grievances  Grievance[]
-  assignments GrievanceDepartmentAssignment[]
+  users                User[]
+  grievances           Grievance[]
+  assignments          GrievanceDepartmentAssignment[]
+  assignment_histories GrievanceAssignmentHistory[]
 
   @@map("departments")
 }
@@ -101,8 +104,9 @@ model Grievance {
   department     Department               @relation(fields: [department_id], references: [id], onDelete: Restrict)
   status_history GrievanceStatusHistory[]
   notifications  Notification[]
-  images         GrievanceImage[]
-  assignments    GrievanceDepartmentAssignment[]
+  images               GrievanceImage[]
+  assignments          GrievanceDepartmentAssignment[]
+  assignment_histories GrievanceAssignmentHistory[]
 
   @@map("grievances")
 }
@@ -115,17 +119,44 @@ model GrievanceDepartmentAssignment {
   routing_reason      String?     @db.Text
   assigned_officer_id String?
   notes               String?     @db.Text
+  remarks             String?     @db.Text
+  resolution_description String?  @db.Text
+  started_at          DateTime?
+  resolved_at         DateTime?
   created_at          DateTime    @default(now())
   updated_at          DateTime    @updatedAt
 
   grievance           Grievance   @relation(fields: [grievance_id], references: [id], onDelete: Cascade)
   department          Department  @relation(fields: [department_id], references: [id], onDelete: Restrict)
   assigned_officer    User?       @relation("OfficerDepartmentAssignments", fields: [assigned_officer_id], references: [id], onDelete: SetNull)
+  history             GrievanceAssignmentHistory[]
 
   @@unique([grievance_id, department_id])
   @@index([department_id])
   @@index([grievance_id])
   @@map("grievance_department_assignments")
+}
+
+model GrievanceAssignmentHistory {
+  id              String                        @id @default(uuid())
+  assignment_id   String
+  grievance_id    String
+  department_id   String
+  previous_status Status?
+  status          Status
+  remarks         String?                       @db.Text
+  changed_by      String
+  created_at      DateTime                      @default(now())
+
+  assignment      GrievanceDepartmentAssignment @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
+  grievance       Grievance                     @relation(fields: [grievance_id], references: [id], onDelete: Cascade)
+  department      Department                    @relation(fields: [department_id], references: [id], onDelete: Restrict)
+  user            User                          @relation(fields: [changed_by], references: [id], onDelete: Cascade)
+
+  @@index([assignment_id])
+  @@index([grievance_id])
+  @@index([department_id])
+  @@map("grievance_assignment_history")
 }
 
 model GrievanceStatusHistory {
