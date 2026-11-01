@@ -155,6 +155,7 @@ class MLGrievanceClassifier:
                     review_req = True
 
                 explanation = extract_explanation_terms(pipeline, text, predicted_category)
+                all_probs = {classes[i]: round(float(probs[i]), 4) for i in range(len(classes))}
 
                 return {
                     "category": predicted_category,
@@ -163,7 +164,8 @@ class MLGrievanceClassifier:
                     "ai_review_required": review_req,
                     "classification_method": "tfidf_logistic_regression",
                     "model_used": model_loader.config.get("model_type", "tfidf-logistic-regression") if model_loader.config else "tfidf-logistic-regression",
-                    "explanation": explanation
+                    "explanation": explanation,
+                    "all_probabilities": all_probs,
                 }
             except Exception as e:
                 logger.error(f"Error during ML inference: {e}. Executing rule-based fallback.")

@@ -14,6 +14,7 @@ CATEGORY_KEYWORDS = {
     "Electricity": [
         "electricity", "power", "power cut", "voltage", "transformer", "wire", "electric pole",
         "current", "outage", "blackout", "meter", "fuse", "eb bill", "electricity board",
+        "streetlight", "streetlights", "street light",
         "மின்சாரம்", "மின்வெட்டு", "கரண்ட்", "बिजली", "पावर कट", "மின் கம்பி", "విద్యుత్", "కరెంట్"
     ],
     "Roads and Transport": [
@@ -78,6 +79,8 @@ class GrievanceClassifierService:
             matches = 0
             for kw in keywords:
                 kw_lower = kw.lower()
+                if kw_lower == "street" and ("streetlight" in text_lower or "street light" in text_lower):
+                    continue
                 # Boundary pattern for both ASCII and Indic scripts (spaces, punctuation, start/end of string)
                 pattern = r'(?:^|[\s.,!?:;|\-–—()"\'])' + re.escape(kw_lower) + r'(?:$|[\s.,!?:;|\-–—()"\'])'
                 if re.search(pattern, text_lower):
@@ -111,5 +114,24 @@ class GrievanceClassifierService:
             "is_baseline": True,
             "method": "BASELINE (Keyword Heuristic)"
         }
+
+    def get_all_category_scores(self, text: str) -> Dict[str, int]:
+        """Returns matching keyword counts for all categories."""
+        if not text:
+            return {}
+        text_lower = text.lower()
+        scores = {}
+        for category, keywords in CATEGORY_KEYWORDS.items():
+            matches = 0
+            for kw in keywords:
+                kw_lower = kw.lower()
+                if kw_lower == "street" and ("streetlight" in text_lower or "street light" in text_lower):
+                    continue
+                pattern = r'(?:^|[\s.,!?:;|\-–—()"\'])' + re.escape(kw_lower) + r'(?:$|[\s.,!?:;|\-–—()"\'])'
+                if re.search(pattern, text_lower):
+                    matches += 1
+            if matches > 0:
+                scores[category] = matches
+        return scores
 
 grievance_classifier_service = GrievanceClassifierService()

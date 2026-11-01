@@ -22,6 +22,12 @@ class ModelLoaderSingleton:
             cls._instance = super(ModelLoaderSingleton, cls).__new__(cls)
         return cls._instance
 
+    def __init__(self):
+        # Ensure the singleton eagerly initializes model state when imported, while
+        # still preserving the explicit load_model() fallback path used by startup.
+        if not self._loaded and self.model is None:
+            self.load_model()
+
     def load_model(self, force_reload: bool = False) -> bool:
         if self._loaded and not force_reload:
             return True
