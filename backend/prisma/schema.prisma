@@ -41,10 +41,11 @@ model User {
   created_at    DateTime    @default(now())
   updated_at    DateTime    @updatedAt
 
-  department     Department?              @relation(fields: [department_id], references: [id], onDelete: SetNull)
-  grievances     Grievance[]
-  status_changes GrievanceStatusHistory[]
-  notifications  Notification[]
+  department             Department?                    @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  grievances             Grievance[]
+  status_changes         GrievanceStatusHistory[]
+  notifications          Notification[]
+  department_assignments GrievanceDepartmentAssignment[] @relation("OfficerDepartmentAssignments")
 
   @@map("users")
 }
@@ -57,8 +58,9 @@ model Department {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
-  users      User[]
-  grievances Grievance[]
+  users       User[]
+  grievances  Grievance[]
+  assignments GrievanceDepartmentAssignment[]
 
   @@map("departments")
 }
@@ -69,8 +71,14 @@ model Grievance {
   user_id           String
   original_text     String   @db.Text
   detected_language String?
+  detected_language_code String?
   translated_text   String?  @db.Text
+  translation_status String? @default("unavailable")
+  translation_method String?
+  translation_error  String?  @db.Text
+  translated_at      DateTime?
   category          String
+  routing_status    String   @default("ASSIGNED")
   priority          Priority @default(MEDIUM)
   department_id     String
   status                  Status   @default(SUBMITTED)
@@ -93,8 +101,31 @@ model Grievance {
   department     Department               @relation(fields: [department_id], references: [id], onDelete: Restrict)
   status_history GrievanceStatusHistory[]
   notifications  Notification[]
+  images         GrievanceImage[]
+  assignments    GrievanceDepartmentAssignment[]
 
   @@map("grievances")
+}
+
+model GrievanceDepartmentAssignment {
+  id                  String      @id @default(uuid())
+  grievance_id        String
+  department_id       String
+  status              Status      @default(ASSIGNED)
+  routing_reason      String?     @db.Text
+  assigned_officer_id String?
+  notes               String?     @db.Text
+  created_at          DateTime    @default(now())
+  updated_at          DateTime    @updatedAt
+
+  grievance           Grievance   @relation(fields: [grievance_id], references: [id], onDelete: Cascade)
+  department          Department  @relation(fields: [department_id], references: [id], onDelete: Restrict)
+  assigned_officer    User?       @relation("OfficerDepartmentAssignments", fields: [assigned_officer_id], references: [id], onDelete: SetNull)
+
+  @@unique([grievance_id, department_id])
+  @@index([department_id])
+  @@index([grievance_id])
+  @@map("grievance_department_assignments")
 }
 
 model GrievanceStatusHistory {
@@ -135,4 +166,24 @@ model Notification {
   grievance Grievance? @relation(fields: [grievance_id], references: [id], onDelete: SetNull)
 
   @@map("notifications")
+}
+
+model GrievanceImage {
+  id           String   @id @default(uuid())
+  grievance_id String
+  filename     String
+  mime_type    String
+  size         Int
+  path         String
+  analysis_status String? @default("pending")
+  image_description String? @db.Text
+  detected_issue String?
+  visual_observations String[] @default([])
+  analysis_confidence Float?
+  human_review_required Boolean @default(true)
+  uploaded_at  DateTime @default(now())
+
+  grievance    Grievance @relation(fields: [grievance_id], references: [id], onDelete: Cascade)
+
+  @@map("grievance_images")
 }
