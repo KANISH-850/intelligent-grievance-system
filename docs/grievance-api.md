@@ -171,7 +171,9 @@ Content-Type: application/json
 | `401 Unauthorized` | Missing, malformed, or expired JWT | `{"success": false, "message": "Authentication required. Missing token."}` |
 | `403 Forbidden` | Authenticated user lacks required role (e.g. OFFICER submitting citizen grievance) | `{"success": false, "message": "Access denied. Requires role: CITIZEN"}` |
 | `404 Not Found` | Grievance ID does not exist OR belongs to another citizen | `{"success": false, "message": "Grievance not found"}` |
-| `503 Service Unavailable` | AI Microservice offline, timed out, or connection failed | `{"success": false, "message": "AI grievance analysis service is currently unavailable"}` |
+| `503 Service Unavailable` | AI service returns a non-retryable client error | `{"success": false, "message": "AI grievance analysis service is currently unavailable"}` |
+
+If the AI Microservice is offline, times out, or returns an invalid response, the backend uses local keyword matching to select a provisional department (or `Other` if no known category matches) and priority. The grievance is flagged with `ai_review_required: true`, and the citizen receives `201 Created`.
 
 ---
 
