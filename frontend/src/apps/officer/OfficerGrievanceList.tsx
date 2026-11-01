@@ -65,7 +65,9 @@ export function OfficerGrievanceList() {
     return (
       g.grievance_number.toLowerCase().includes(q) ||
       g.category.toLowerCase().includes(q) ||
-      g.original_text.toLowerCase().includes(q)
+      g.original_text.toLowerCase().includes(q) ||
+      (g.translated_text || "").toLowerCase().includes(q) ||
+      (g.detected_language || "").toLowerCase().includes(q)
     )
   })
 
@@ -190,11 +192,30 @@ export function OfficerGrievanceList() {
                   <tr key={g.id} className={g.ai_review_required ? "bg-amber-50/40" : ""}>
                     <td>
                       <span className="font-mono font-bold text-primary text-xs">{g.grievance_number}</span>
+                      {g.assignments && g.assignments.length > 1 && (
+                        <div className="mt-0.5">
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                            Multi-Dept ({g.assignments.length})
+                          </span>
+                        </div>
+                      )}
                     </td>
-                    <td className="text-xs font-medium max-w-[120px] truncate">{g.category}</td>
+                    <td className="text-xs font-medium max-w-[160px]">
+                      <div className="truncate font-semibold">{g.category}</div>
+                      {g.translation_status === "translated" && g.translated_text ? (
+                        <div className="text-[10px] text-muted-foreground truncate italic max-w-[150px]" title={g.translated_text}>
+                          "{g.translated_text}"
+                        </div>
+                      ) : null}
+                    </td>
                     <td><PriorityBadge priority={g.priority} /></td>
                     <td><StatusBadge status={g.status} /></td>
-                    <td className="text-xs text-muted-foreground">{g.detected_language || "English"}</td>
+                    <td className="text-xs text-muted-foreground">
+                      <span>{g.detected_language || "English"}</span>
+                      {g.translation_status === "translated" && (
+                        <span className="ml-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded">EN</span>
+                      )}
+                    </td>
                     <td className="text-xs">
                       {g.ai_confidence !== null && g.ai_confidence !== undefined ? (
                         <span className="font-mono">{(g.ai_confidence * 100).toFixed(0)}%</span>
