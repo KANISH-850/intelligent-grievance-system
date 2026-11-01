@@ -8,7 +8,7 @@ Set `TRANSLATION_API_URL` to a LibreTranslate compatible `/translate` endpoint. 
 
 ## Image analysis
 
-Set `VISION_API_URL` to the complete OpenAI-compatible Chat Completions endpoint, such as `https://api.openai.com/v1/chat/completions`; set `VISION_API_KEY`; and optionally set `VISION_MODEL` (default `gpt-4o-mini`). The endpoint must support image input and JSON response mode. The backend reads the validated uploaded file and sends its actual bytes to the AI service. Missing configuration, unsupported input, timeout, or provider errors are persisted as an explicit unavailable/failed result with human review required. Vision output is supporting evidence and does not override complaint-text classification.
+Image analysis is powered exclusively by a fine-tuned, local PyTorch model (`MobileNetV3-Small-Civic`) located in `ai-service/models/civic_mobilenet_v3_best.pth`. It requires no external cloud vision API credentials or network roundtrips. The backend passes the validated uploaded image bytes as base64 to `/analyze-image`. The model classifies the defect into one of 9 civic and non-civic categories (`pothole_road_damage`, `garbage_dumping`, `water_leakage_logging`, `broken_streetlight`, `exposed_wires_electrical`, `unhygienic_toilet_sewage`, `damaged_public_facility`, `open_manhole_drainage`, or `unrelated_negative`), extracts visual observations, computes confidence scores, and determines department routing. Unsupported MIME types, corrupted bytes, or oversized payloads return an explicit error status with human review required. Vision predictions directly drive department routing for image-only complaints and provide corroborating visual evidence for multimodal grievances.
 
 ## Database update
 

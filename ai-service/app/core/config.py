@@ -17,11 +17,6 @@ class Settings(BaseSettings):
     TRANSLATION_API_URL: Optional[str] = None
     TRANSLATION_API_KEY: Optional[str] = None
 
-    # OpenAI-compatible multimodal Chat Completions endpoint, called only server-side.
-    VISION_API_URL: Optional[str] = None
-    VISION_API_KEY: Optional[str] = None
-    VISION_MODEL: str = "gpt-4o-mini"
-
     model_config = SettingsConfigDict(
         env_file=(".env", "../.env"),
         env_file_encoding="utf-8",

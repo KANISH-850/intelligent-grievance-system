@@ -52,118 +52,44 @@ def test_indic_language_codes_and_native_english_passthrough(monkeypatch):
     assert len(calls) == before
 
 
-def test_vision_provider_receives_actual_image_bytes(monkeypatch):
-    monkeypatch.setattr(settings, "VISION_API_URL", "https://vision.invalid/v1/chat/completions")
-    monkeypatch.setattr(settings, "VISION_API_KEY", "server-secret")
-    observed = {}
-
-    def post(url, **kwargs):
-        observed.update(kwargs)
-        content = '{"image_description":"A damaged road surface","detected_issue":"Road damage","observations":["Large broken patch in the road"],"human_review_required":true}'
-        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"choices": [{"message": {"content": content}}]})
-
-    monkeypatch.setattr(vision.httpx, "post", post)
-    payload = base64.b64encode(b"test image bytes").decode("ascii")
-    result = vision.analyze_image(payload, "image/jpeg")
-    sent_content = observed["json"]["messages"][1]["content"][1]["image_url"]["url"]
-    assert payload in sent_content
-    assert result["analysis_status"] == "analyzed"
-    assert result["detected_issue"] == "Road damage"
-    assert result["confidence"] is None
-
-
-def test_vision_missing_credentials_and_unsupported_format(monkeypatch):
-    monkeypatch.setattr(settings, "VISION_API_URL", None)
-    monkeypatch.setattr(settings, "VISION_API_KEY", None)
-    assert vision.analyze_image("YWJj", "image/jpeg")["analysis_status"] == "unavailable"
+def test_vision_unsupported_format():
     assert vision.analyze_image("YWJj", "image/gif")["analysis_status"] == "unsupported_format"
 
 
-def test_vision_provider_error_returns_reviewable_failure(monkeypatch):
-    monkeypatch.setattr(settings, "VISION_API_URL", "https://vision.invalid/v1/chat/completions")
-    monkeypatch.setattr(settings, "VISION_API_KEY", "server-secret")
-    monkeypatch.setattr(vision.httpx, "post", lambda *a, **k: (_ for _ in ()).throw(vision.httpx.TimeoutException("timeout")))
-    result = vision.analyze_image("YWJj", "image/jpeg")
+def test_vision_invalid_base64_payload():
+    result = vision.analyze_image("not-valid-base64!@#$", "image/jpeg")
     assert result["analysis_status"] == "failed"
     assert result["human_review_required"] is True
-
-
-def test_vision_markdown_fences_and_issue_normalization(monkeypatch):
-    monkeypatch.setattr(settings, "VISION_API_URL", "https://vision.invalid/v1/chat/completions")
-    monkeypatch.setattr(settings, "VISION_API_KEY", "server-secret")
-
-    def post(url, **kwargs):
-        content = "```json\n{\"image_description\":\"Overflowing community trash bin\",\"detected_issue\":\"Garbage dump on roadside\",\"observations\":\"Visible plastic and debris\"}\n```"
-        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"choices": [{"message": {"content": content}}]})
-
-    monkeypatch.setattr(vision.httpx, "post", post)
-    payload = base64.b64encode(b"test image bytes").decode("ascii")
-    result = vision.analyze_image(payload, "image/jpeg")
-    assert result["analysis_status"] == "analyzed"
-    assert result["detected_issue"] == "Garbage/sanitation"
-    assert "Visible plastic and debris" in result["observations"]
-    assert result["human_review_required"] is True
-
-
-def test_vision_unrelated_image_rejection(monkeypatch):
-    monkeypatch.setattr(settings, "VISION_API_URL", "https://vision.invalid/v1/chat/completions")
-    monkeypatch.setattr(settings, "VISION_API_KEY", "server-secret")
-
-    def post(url, **kwargs):
-        content = json.dumps({
-            "is_grievance_related": False,
-            "image_type": "unrelated",
-            "issue_detected": False,
-            "detected_issue": None,
-            "issue_description": "A portrait selfie of a person indoors smiling.",
-            "recommended_category": None,
-            "recommended_department": None,
-            "additional_departments": [],
-            "visual_observations": ["Person smiling", "Indoor room wall"],
-            "human_review_required": False,
-            "citizen_message": "This image does not appear to contain a recognizable civic or public-service issue."
-        })
-        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"choices": [{"message": {"content": content}}]})
-
-    monkeypatch.setattr(vision.httpx, "post", post)
-    payload = base64.b64encode(b"selfie bytes").decode("ascii")
-    result = vision.analyze_image(payload, "image/jpeg")
-
-    assert result["analysis_status"] == "analyzed"
     assert result["is_grievance_related"] is False
-    assert result["image_type"] == "unrelated"
-    assert result["detected_issue"] is None
-    assert result["recommended_category"] is None
-    assert result["recommended_department"] is None
-    assert "This image does not appear to contain a recognizable civic" in result["citizen_message"]
 
 
-def test_vision_uncertain_blurry_image(monkeypatch):
-    monkeypatch.setattr(settings, "VISION_API_URL", "https://vision.invalid/v1/chat/completions")
-    monkeypatch.setattr(settings, "VISION_API_KEY", "server-secret")
-
-    def post(url, **kwargs):
-        content = json.dumps({
-            "is_grievance_related": False,
-            "image_type": "uncertain",
-            "issue_detected": False,
-            "detected_issue": None,
-            "issue_description": "Extremely dark and blurry image with unidentifiable shapes.",
-            "recommended_category": None,
-            "recommended_department": None,
-            "visual_observations": ["Blurry artifacts"],
-            "human_review_required": True,
-            "citizen_message": "The image is too blurry to identify a civic defect."
-        })
-        return SimpleNamespace(raise_for_status=lambda: None, json=lambda: {"choices": [{"message": {"content": content}}]})
-
-    monkeypatch.setattr(vision.httpx, "post", post)
-    payload = base64.b64encode(b"blurry bytes").decode("ascii")
-    result = vision.analyze_image(payload, "image/jpeg")
-
-    assert result["analysis_status"] == "analyzed"
-    assert result["image_type"] == "uncertain"
+def test_vision_oversized_payload():
+    huge_bytes = b"0" * (6 * 1024 * 1024)
+    huge_b64 = base64.b64encode(huge_bytes).decode("ascii")
+    result = vision.analyze_image(huge_b64, "image/jpeg")
+    assert result["analysis_status"] == "too_large"
     assert result["human_review_required"] is True
-    assert result["recommended_department"] is None
+
+
+def test_vision_corrupted_image_bytes():
+    corrupted_b64 = base64.b64encode(b"not a valid jpeg or png image").decode("ascii")
+    result = vision.analyze_image(corrupted_b64, "image/jpeg")
+    assert result["analysis_status"] in {"failed", "unavailable"}
+    assert result["human_review_required"] is True
+
+
+def test_vision_valid_image_mobilenet_inference():
+    # 1x1 black pixel JPEG
+    sample_jpeg_b64 = (
+        "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////"
+        "wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA="
+    )
+    result = vision.analyze_image(sample_jpeg_b64, "image/jpeg")
+    assert result["analysis_status"] == "analyzed"
+    assert result["model_name"] == "MobileNetV3-Small-Civic"
+    assert "detected_issue" in result
+    assert "visual_observations" in result
+    assert isinstance(result["visual_observations"], list)
+
 
 
