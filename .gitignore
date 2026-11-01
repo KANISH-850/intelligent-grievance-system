@@ -14,3 +14,9 @@ ai-service/models/*.joblib
 ai-service/models/*.safetensors
 *.bin
 scratch/
+# Uploaded grievance images — never commit user files
+uploads/
+backend/uploads/
+# Raw CV training datasets (190MB+ binary photos)
+ai-service/datasets/
+
