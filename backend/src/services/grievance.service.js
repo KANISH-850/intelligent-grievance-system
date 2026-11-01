@@ -7,35 +7,200 @@ const aiService = require("./ai.service");
  */
 const generateGrievanceNumber = async (tx) => {
   const year = new Date().getFullYear();
-  const count = await tx.grievance.count();
-  let sequence = count + 1;
-  let grievanceNumber = `GRV-${year}-${String(sequence).padStart(6, "0")}`;
-
-  let existing = await tx.grievance.findUnique({
-    where: { grievance_number: grievanceNumber },
+  const latest = await tx.grievance.findFirst({
+    where: {
+      grievance_number: { startsWith: `GRV-${year}-` },
+    },
+    orderBy: { grievance_number: "desc" },
+    select: { grievance_number: true },
   });
 
-  while (existing) {
-    sequence += 1;
-    grievanceNumber = `GRV-${year}-${String(sequence).padStart(6, "0")}`;
-    existing = await tx.grievance.findUnique({
-      where: { grievance_number: grievanceNumber },
-    });
+  let sequence = 1;
+  if (latest && latest.grievance_number) {
+    const parts = latest.grievance_number.split("-");
+    const num = parseInt(parts[2], 10);
+    if (!isNaN(num)) {
+      sequence = num + 1;
+    }
   }
 
-  return grievanceNumber;
+  let attempts = 0;
+  while (attempts < 50) {
+    const candidate = `GRV-${year}-${String(sequence).padStart(6, "0")}`;
+    const existing = await tx.grievance.findUnique({
+      where: { grievance_number: candidate },
+      select: { id: true },
+    });
+    if (!existing) {
+      return candidate;
+    }
+    sequence += 1;
+    attempts += 1;
+  }
+
+  return `GRV-${year}-${String(sequence).padStart(6, "0")}`;
 };
 
 /**
  * Submit a new citizen grievance.
  * Integrates with AI microservice, resolves department, and transactionally persists to PostgreSQL.
  */
-const submitGrievance = async ({ userId, text }) => {
-  // Step 1: Request AI analysis
-  const aiAnalysis = await aiService.analyzeGrievance(text);
+const submitGrievance = async ({ userId, text, images = [] }) => {
+  const issueCategory = {
+    "Road damage": "Roads and Transport",
+    "Garbage/sanitation": "Sanitation",
+    "Waterlogging/leakage": "Water Supply",
+    "Electrical infrastructure damage": "Electricity",
+    "Public infrastructure damage": "Municipal Services",
+  };
 
-  // Step 2: Resolve department in PostgreSQL database
-  let department = await prisma.department.findFirst({
+  const hasText = typeof text === "string" && text.trim().length > 0;
+  const imageAnalyses = await Promise.all(images.map((file) => aiService.analyzeImage(file.path, file.mimetype)));
+
+  let aiAnalysis = null;
+  let synthesizedText = "";
+
+  if (!hasText) {
+    // Image-only submission workflow
+    const civicAnalyses = imageAnalyses.filter(
+      (img) => img.is_grievance_related && img.issue_detected && img.detected_issue
+    );
+
+    if (civicAnalyses.length === 0) {
+      const unrelated = imageAnalyses.find((img) => img.image_type === "unrelated");
+      if (unrelated) {
+        const error = new Error(
+          unrelated.citizen_message ||
+            "The uploaded image does not appear to contain a recognizable civic grievance. Please upload a relevant image or enter a written description."
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+
+      const uncertain = imageAnalyses.find((img) => img.image_type === "uncertain");
+      if (uncertain && uncertain.analysis_status === "analyzed") {
+        const error = new Error(
+          uncertain.citizen_message ||
+            "The uploaded image is too unclear or ambiguous to categorize. Please upload a clearer photograph or provide a written description."
+        );
+        error.statusCode = 400;
+        throw error;
+      }
+    }
+
+    const primaryCivic = civicAnalyses[0];
+    if (primaryCivic) {
+      const desc = primaryCivic.issue_description || primaryCivic.image_description || `Reported ${primaryCivic.detected_issue}`;
+      synthesizedText = `[Visual Grievance Report] Issue: ${primaryCivic.detected_issue}. ${desc}${
+        primaryCivic.visual_observations?.length ? ` (Visible evidence: ${primaryCivic.visual_observations.join("; ")})` : ""
+      }`;
+
+      const primaryDept = primaryCivic.recommended_department || issueCategory[primaryCivic.detected_issue] || "Other";
+      const primaryCat = primaryCivic.recommended_category || primaryDept;
+
+      aiAnalysis = {
+        language: "English",
+        language_code: "en",
+        translated_text: synthesizedText,
+        translation_status: "passthrough",
+        translation_method: "visual_evidence_synthesis",
+        translation_error: null,
+        translated_at: new Date(),
+        category: primaryCat,
+        department: primaryDept,
+        category_confidence: typeof primaryCivic.confidence === "number" ? primaryCivic.confidence : null,
+        confidence_level: typeof primaryCivic.confidence === "number"
+          ? (primaryCivic.confidence >= 0.75 ? "HIGH" : primaryCivic.confidence >= 0.50 ? "MEDIUM" : "LOW")
+          : "LOW",
+        ai_review_required: true, // Vision models do not return calibrated probabilities; require human officer verification
+
+        classification_method: "computer_vision_multimodal",
+        explanation_terms: primaryCivic.visual_observations || [],
+        departments: [
+          {
+            department_name: primaryDept,
+            category: primaryCat,
+            confidence: primaryCivic.confidence || null,
+            reason: `Primary routing based on visual evidence: detected '${primaryCivic.detected_issue}'${
+              primaryCivic.visual_observations?.length ? ` (${primaryCivic.visual_observations.join(", ")})` : ""
+            }`,
+            source: "image",
+          },
+        ],
+      };
+    } else {
+      // Vision provider was offline/unavailable for image-only submission
+      synthesizedText = "[Visual Grievance Report] Image submitted for administrative officer inspection.";
+      aiAnalysis = {
+        language: "English",
+        language_code: "en",
+        translated_text: synthesizedText,
+        translation_status: "unavailable",
+        translation_method: null,
+        translation_error: "Vision provider unavailable at submission time",
+        translated_at: null,
+        category: "Other",
+        department: "Other",
+        priority: "MEDIUM",
+        category_confidence: null,
+        confidence_level: "LOW",
+        ai_review_required: true,
+        classification_method: "vision_offline_fallback",
+        explanation_terms: [],
+        departments: [
+          {
+            department_name: "Other",
+            category: "Other",
+            confidence: null,
+            reason: "Queued for administrative review: vision analysis unavailable at submission time",
+            source: "image",
+          },
+        ],
+      };
+    }
+  } else {
+    // Text grievance (with optional images)
+    aiAnalysis = await aiService.analyzeGrievance(text);
+  }
+
+  // Cross-modal conflict & review flag detection
+  const imageReviewRequired = imageAnalyses.some(
+    (result) =>
+      result.human_review_required ||
+      (result.is_grievance_related &&
+        issueCategory[result.detected_issue] &&
+        issueCategory[result.detected_issue] !== aiAnalysis.category)
+  );
+
+  // Step 2: Combine Text and Vision Department Recommendations
+  const deptRecommendations = [...(aiAnalysis.departments || [])];
+
+  // Incorporate legitimate civic visual evidence into department recommendations
+  imageAnalyses.forEach((imgAnalysis) => {
+    if (imgAnalysis.is_grievance_related && imgAnalysis.detected_issue && issueCategory[imgAnalysis.detected_issue]) {
+      const imgDeptName = imgAnalysis.recommended_department || issueCategory[imgAnalysis.detected_issue];
+      const existing = deptRecommendations.find(
+        (d) => d.department_name.toLowerCase() === imgDeptName.toLowerCase()
+      );
+      if (!existing) {
+        deptRecommendations.push({
+          department_name: imgDeptName,
+          category: imgDeptName,
+          confidence: imgAnalysis.confidence || null,
+          reason: `Routed to ${imgDeptName} based on visual evidence: detected issue '${imgAnalysis.detected_issue}'${
+            imgAnalysis.visual_observations?.length ? ` (${imgAnalysis.visual_observations.join(", ")})` : ""
+          }`,
+          source: "image",
+        });
+      } else if (existing.source === "text") {
+        existing.source = "combined";
+        existing.reason += `; Confirmed by visual evidence: '${imgAnalysis.detected_issue}'`;
+      }
+    }
+  });
+
+  // Ensure primary department is at the front
+  let primaryDepartment = await prisma.department.findFirst({
     where: {
       name: {
         equals: aiAnalysis.department,
@@ -43,19 +208,51 @@ const submitGrievance = async ({ userId, text }) => {
       },
     },
   });
+  let routingUnresolved = false;
 
   // Fallback lookup if not found directly by name
-  if (!department) {
-    department = await prisma.department.findFirst({
+  if (!primaryDepartment) {
+    routingUnresolved = true;
+    primaryDepartment = await prisma.department.upsert({
       where: { code: "OTH" },
+      update: {},
+      create: {
+        name: "Other",
+        code: "OTH",
+        description: "General grievances not covered under specific departmental domains",
+      },
     });
   }
 
-  if (!department) {
-    console.error(`Department resolution error: Department '${aiAnalysis.department}' not found in database.`);
-    const error = new Error(`Target department '${aiAnalysis.department}' could not be resolved.`);
-    error.statusCode = 500;
-    throw error;
+
+
+  // Resolve all recommended departments from the DB
+  const resolvedDeptAssignments = [];
+  const processedDeptIds = new Set();
+
+  // Always include primary department
+  resolvedDeptAssignments.push({
+    department: primaryDepartment,
+    reason: deptRecommendations[0]?.reason || `Primary department assignment for ${aiAnalysis.category}`,
+  });
+  processedDeptIds.add(primaryDepartment.id);
+
+  for (const rec of deptRecommendations.slice(1)) {
+    const matchedDept = await prisma.department.findFirst({
+      where: {
+        name: {
+          equals: rec.department_name,
+          mode: "insensitive",
+        },
+      },
+    });
+    if (matchedDept && !processedDeptIds.has(matchedDept.id) && matchedDept.code !== "OTH") {
+      resolvedDeptAssignments.push({
+        department: matchedDept,
+        reason: rec.reason || `Secondary assignment based on ${rec.source || "evidence"}`,
+      });
+      processedDeptIds.add(matchedDept.id);
+    }
   }
 
   // Step 3: Map Priority enum safely
@@ -65,23 +262,33 @@ const submitGrievance = async ({ userId, text }) => {
     : "MEDIUM";
 
   // Step 4: Perform transactional persistence
-  const createdGrievance = await prisma.$transaction(async (tx) => {
-    const grievanceNumber = await generateGrievanceNumber(tx);
+  let createdGrievance = null;
+  let txAttempts = 0;
+  while (txAttempts < 3) {
+    try {
+      createdGrievance = await prisma.$transaction(async (tx) => {
+        const grievanceNumber = await generateGrievanceNumber(tx);
 
     const grievance = await tx.grievance.create({
       data: {
         grievance_number: grievanceNumber,
         user_id: userId,
-        original_text: text,
+        original_text: text || synthesizedText,
         detected_language: aiAnalysis.language,
+        detected_language_code: aiAnalysis.language_code || null,
         translated_text: aiAnalysis.translated_text,
+        translation_status: aiAnalysis.translation_status || "unavailable",
+        translation_method: aiAnalysis.translation_method || null,
+        translation_error: aiAnalysis.translation_error || null,
+        translated_at: aiAnalysis.translated_at || (aiAnalysis.translation_status === "translated" ? new Date() : null),
         category: aiAnalysis.category,
+        routing_status: routingUnresolved || aiAnalysis.ai_review_required || imageReviewRequired || !["translated", "passthrough"].includes(aiAnalysis.translation_status) ? "REVIEW_REQUIRED" : "ASSIGNED",
         priority: priority,
-        department_id: department.id,
+        department_id: primaryDepartment.id,
         status: "SUBMITTED",
         ai_confidence: aiAnalysis.category_confidence,
         ai_confidence_level: aiAnalysis.confidence_level,
-        ai_review_required: aiAnalysis.ai_review_required,
+        ai_review_required: aiAnalysis.ai_review_required || imageReviewRequired,
         ai_classification_method: aiAnalysis.classification_method,
         ai_explanation_terms: aiAnalysis.explanation_terms,
         ai_original_category: aiAnalysis.category,
@@ -97,31 +304,47 @@ const submitGrievance = async ({ userId, text }) => {
       },
     });
 
+    // Create GrievanceDepartmentAssignment records for all assigned departments
+    for (const item of resolvedDeptAssignments) {
+      await tx.grievanceDepartmentAssignment.create({
+        data: {
+          grievance_id: grievance.id,
+          department_id: item.department.id,
+          status: "SUBMITTED",
+          routing_reason: item.reason,
+        },
+      });
+    }
+
     await tx.grievanceStatusHistory.create({
       data: {
         grievance_id: grievance.id,
         status: "SUBMITTED",
-        remarks: "Grievance submitted successfully",
+        remarks: resolvedDeptAssignments.length > 1
+          ? `Grievance submitted successfully. Multi-department routing assigned to: ${resolvedDeptAssignments.map((a) => a.department.name).join(", ")}.`
+          : "Grievance submitted successfully",
         changed_by: userId,
       },
     });
 
     // Create notification for citizen
+    const deptNamesList = resolvedDeptAssignments.map((a) => a.department.name).join(", ");
     await tx.notification.create({
       data: {
         user_id: userId,
         grievance_id: grievance.id,
         type: "GRIEVANCE_SUBMITTED",
         title: "Grievance Submitted",
-        message: `Your grievance ${grievance.grievance_number} has been submitted successfully to ${department.name}.`,
+        message: `Your grievance ${grievance.grievance_number} has been submitted successfully to ${deptNamesList}.`,
       },
     });
 
-    // High / Critical priority alert notification for department officer(s)
+    // High / Critical priority alert notification for officers across ALL assigned departments
     if (priority === "HIGH" || priority === "CRITICAL") {
+      const allAssignedDeptIds = resolvedDeptAssignments.map((a) => a.department.id);
       const deptOfficers = await tx.user.findMany({
-        where: { department_id: department.id, role: "OFFICER" },
-        select: { id: true },
+        where: { department_id: { in: allAssignedDeptIds }, role: "OFFICER" },
+        select: { id: true, department_id: true },
       });
 
       for (const off of deptOfficers) {
@@ -137,8 +360,44 @@ const submitGrievance = async ({ userId, text }) => {
       }
     }
 
+    // After grievance creation, store associated images if any
+    if (images && images.length > 0) {
+      for (const [index, file] of images.entries()) {
+        const analysis = imageAnalyses[index] || {};
+        await tx.grievanceImage.create({
+          data: {
+            grievance_id: grievance.id,
+            filename: file.originalname,
+            mime_type: file.mimetype,
+            size: file.size,
+            path: file.path,
+            analysis_status: analysis.analysis_status || "unavailable",
+            image_description: analysis.issue_description || analysis.image_description || null,
+            detected_issue: analysis.detected_issue || null,
+            visual_observations: analysis.visual_observations || analysis.observations || [],
+            analysis_confidence: typeof analysis.confidence === "number" ? analysis.confidence : null,
+            human_review_required: analysis.human_review_required !== false,
+          },
+        });
+      }
+    }
+
     return grievance;
   });
+      break;
+    } catch (err) {
+      const isUniqueError =
+        err.code === "P2002" ||
+        (err.message && err.message.includes("grievance_number")) ||
+        (err.meta?.target && String(err.meta.target).includes("grievance_number"));
+      if (isUniqueError && txAttempts < 4) {
+        txAttempts += 1;
+        await new Promise((resolve) => setTimeout(resolve, 25 + Math.floor(Math.random() * 50)));
+        continue;
+      }
+      throw err;
+    }
+  }
 
   return createdGrievance;
 };
@@ -159,6 +418,14 @@ const getCitizenGrievances = async (userId) => {
           code: true,
         },
       },
+      assignments: {
+        include: {
+          department: {
+            select: { id: true, name: true, code: true },
+          },
+        },
+      },
+      images: true,
     },
     orderBy: {
       created_at: "desc",
@@ -182,6 +449,14 @@ const getGrievanceById = async (id, requestingUser) => {
           code: true,
         },
       },
+      assignments: {
+        include: {
+          department: {
+            select: { id: true, name: true, code: true },
+          },
+        },
+      },
+      images: true,
       status_history: {
         select: {
           id: true,
