@@ -42,9 +42,12 @@ export function Login() {
   }
 
   const demoAccounts = [
-    { label: "Citizen", email: "citizen@example.com", icon: "👤", color: "hover:border-teal-400/60 hover:bg-teal-50" },
-    { label: "Officer", email: "officer@example.com", icon: "🏛", color: "hover:border-indigo-400/60 hover:bg-indigo-50" },
-    { label: "Admin",   email: "admin@example.com",   icon: "⚙️", color: "hover:border-amber-400/60 hover:bg-amber-50" },
+    { label: "Citizen", role: "Citizen", email: "citizen@example.com", icon: "👤", color: "hover:border-teal-400/60 hover:bg-teal-50" },
+    { label: "Admin", role: "Super Admin", email: "admin@example.com", icon: "⚙️", color: "hover:border-purple-400/60 hover:bg-purple-50" },
+    { label: "Water", role: "Officer", email: "officer@example.com", icon: "💧", color: "hover:border-blue-400/60 hover:bg-blue-50" },
+    { label: "Roads", role: "Officer", email: "officer.roads@example.com", icon: "🛣️", color: "hover:border-amber-400/60 hover:bg-amber-50" },
+    { label: "Sanitation", role: "Officer", email: "officer.sanitation@example.com", icon: "🧹", color: "hover:border-emerald-400/60 hover:bg-emerald-50" },
+    { label: "Electricity", role: "Officer", email: "officer.elec@example.com", icon: "⚡", color: "hover:border-yellow-400/60 hover:bg-yellow-50" },
   ]
 
   return (
@@ -230,10 +233,12 @@ export function Login() {
                     key={acc.label}
                     type="button"
                     onClick={() => fillDemo(acc.email)}
-                    className={`flex flex-col items-center gap-1 p-2.5 border rounded-lg text-xs font-medium text-foreground transition-all duration-150 ${acc.color}`}
+                    className={`flex flex-col items-center justify-center p-2 border rounded-lg text-xs font-medium text-foreground transition-all duration-150 ${acc.color}`}
+                    title={`Login as ${acc.label} (${acc.email})`}
                   >
                     <span className="text-base">{acc.icon}</span>
-                    {acc.label}
+                    <span className="font-semibold text-[11px] leading-tight mt-0.5">{acc.label}</span>
+                    <span className="text-[9px] text-muted-foreground">{acc.role}</span>
                   </button>
                 ))}
               </div>
