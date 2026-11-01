@@ -13,6 +13,9 @@ router.get("/grievances", adminController.getAllGrievances);
 // Admin System-Wide Single Grievance Detail
 router.get("/grievances/:id", adminController.getAdminGrievanceById);
 
+// Admin Grievance Image Serving
+router.get("/grievances/:id/images/:imageId", adminController.serveAdminGrievanceImage);
+
 // Admin System-Wide Status Update
 router.patch("/grievances/:id/status", adminController.updateGrievanceStatus);
 

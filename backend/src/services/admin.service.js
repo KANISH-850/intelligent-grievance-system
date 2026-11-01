@@ -31,6 +31,13 @@ const getAllGrievances = async (filters = {}) => {
           code: true,
         },
       },
+      assignments: {
+        include: {
+          department: {
+            select: { id: true, name: true, code: true },
+          },
+        },
+      },
       user: {
         select: {
           id: true,
@@ -61,6 +68,16 @@ const getAdminGrievanceById = async (id) => {
           code: true,
         },
       },
+      assignments: {
+        include: {
+          department: {
+            select: { id: true, name: true, code: true },
+          },
+          assigned_officer: {
+            select: { id: true, name: true, email: true },
+          },
+        },
+      },
       user: {
         select: {
           id: true,
@@ -86,6 +103,7 @@ const getAdminGrievanceById = async (id) => {
           created_at: "asc",
         },
       },
+      images: true,
     },
   });
 
@@ -351,6 +369,7 @@ const correctClassification = async (adminId, grievanceId, { category, remarks }
       data: {
         category,
         department_id: department ? department.id : grievance.department_id,
+        routing_status: "ASSIGNED",
         ai_review_required: false,
         is_human_corrected: true,
         human_corrected_by: adminId,
@@ -383,6 +402,26 @@ const correctClassification = async (adminId, grievanceId, { category, remarks }
           message: `Your grievance ${grievance.grievance_number} classification has been updated to '${category}'.`,
         },
       });
+    }
+
+    // If rerouted to a different department, notify officers of the target department
+    const targetDeptId = department ? department.id : grievance.department_id;
+    if (previousDeptId !== targetDeptId) {
+      const targetOfficers = await tx.user.findMany({
+        where: { department_id: targetDeptId, role: "OFFICER" },
+        select: { id: true },
+      });
+      for (const off of targetOfficers) {
+        await tx.notification.create({
+          data: {
+            user_id: off.id,
+            grievance_id: grievanceId,
+            type: "GRIEVANCE_ASSIGNED",
+            title: "Grievance Rerouted to Department",
+            message: `Grievance ${grievance.grievance_number} has been rerouted to your department following administrative classification correction.`,
+          },
+        });
+      }
     }
 
     return updated;
