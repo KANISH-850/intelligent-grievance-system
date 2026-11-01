@@ -32,8 +32,10 @@ async function main() {
   const saltRounds = 10;
   const demoPassword = await bcrypt.hash("Password@123", saltRounds);
 
-  // Fetch Water Supply department for Demo Officer
-  const waterDept = await prisma.department.findUnique({ where: { code: "WS" } });
+  // Fetch all departments for dedicated departmental demo officers
+  const allDepts = await prisma.department.findMany();
+  const deptMap = {};
+  allDepts.forEach((d) => { deptMap[d.code] = d.id; });
 
   const users = [
     {
@@ -44,11 +46,67 @@ async function main() {
       department_id: null,
     },
     {
-      name: "Demo Officer",
+      name: "Demo Officer (Water Supply)",
       email: "officer@example.com",
       password_hash: demoPassword,
       role: "OFFICER",
-      department_id: waterDept ? waterDept.id : null,
+      department_id: deptMap["WS"] || null,
+    },
+    {
+      name: "Roads Officer",
+      email: "officer.roads@example.com",
+      password_hash: demoPassword,
+      role: "OFFICER",
+      department_id: deptMap["RT"] || null,
+    },
+    {
+      name: "Electricity Officer",
+      email: "officer.elec@example.com",
+      password_hash: demoPassword,
+      role: "OFFICER",
+      department_id: deptMap["ELEC"] || null,
+    },
+    {
+      name: "Sanitation Officer",
+      email: "officer.sanitation@example.com",
+      password_hash: demoPassword,
+      role: "OFFICER",
+      department_id: deptMap["SAN"] || null,
+    },
+    {
+      name: "Healthcare Officer",
+      email: "officer.healthcare@example.com",
+      password_hash: demoPassword,
+      role: "OFFICER",
+      department_id: deptMap["HC"] || null,
+    },
+    {
+      name: "Education Officer",
+      email: "officer.education@example.com",
+      password_hash: demoPassword,
+      role: "OFFICER",
+      department_id: deptMap["EDU"] || null,
+    },
+    {
+      name: "Municipal Officer",
+      email: "officer.municipal@example.com",
+      password_hash: demoPassword,
+      role: "OFFICER",
+      department_id: deptMap["MS"] || null,
+    },
+    {
+      name: "Revenue Officer",
+      email: "officer.revenue@example.com",
+      password_hash: demoPassword,
+      role: "OFFICER",
+      department_id: deptMap["REV"] || null,
+    },
+    {
+      name: "Other Services Officer",
+      email: "officer.other@example.com",
+      password_hash: demoPassword,
+      role: "OFFICER",
+      department_id: deptMap["OTH"] || null,
     },
     {
       name: "Demo Admin",
@@ -66,7 +124,7 @@ async function main() {
       create: u,
     });
   }
-  console.log(`✅ Seeded ${users.length} demo users (Citizen, Officer [Water Supply], Admin).`);
+  console.log(`✅ Seeded ${users.length} demo users (Citizen, 9 Departmental Officers, Admin).`);
 
   console.log("🌱 Database seeding completed successfully!");
 }
