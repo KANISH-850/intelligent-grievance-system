@@ -4,14 +4,134 @@ import {
   getAdminGrievanceByIdApi,
   updateAdminGrievanceStatusApi,
   correctAdminClassificationApi,
+  fetchGrievanceImageBlob,
 } from "@/core/api/grievanceApi"
-import type { Grievance, Status } from "@/shared/types/grievance"
+import type { Grievance, GrievanceImage, Status } from "@/shared/types/grievance"
 import { StatusBadge } from "@/shared/ui/StatusBadge"
 import { PriorityBadge } from "@/shared/ui/PriorityBadge"
 import { StatusTimeline } from "@/shared/ui/StatusTimeline"
 import { Button } from "@/shared/ui/button"
 import { UpdateStatusModal } from "../officer/UpdateStatusModal"
 import { CorrectClassificationModal } from "./CorrectClassificationModal"
+
+function ImageGallery({ grievanceId, images, routePrefix = "/grievances" }: { grievanceId: string; images: GrievanceImage[]; routePrefix?: string }) {
+  const [blobUrls, setBlobUrls] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(images.length > 0)
+  const [lightbox, setLightbox] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (images.length === 0) return
+    let cancelled = false
+    Promise.allSettled(
+      images.map(async (img) => {
+        const url = await fetchGrievanceImageBlob(grievanceId, img.id, routePrefix)
+        return [img.id, url] as [string, string]
+      })
+    ).then((results) => {
+      if (cancelled) return
+      const map: Record<string, string> = {}
+      results.forEach((r) => { if (r.status === "fulfilled") map[r.value[0]] = r.value[1] })
+      setBlobUrls(map)
+      setLoading(false)
+    })
+    return () => { cancelled = true }
+  }, [grievanceId, images, routePrefix])
+
+  const getStatusBadge = (status?: string | null) => {
+    switch (status) {
+      case "completed":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800">Analysis completed</span>
+      case "in_progress":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-100 text-blue-800">Analysis in progress</span>
+      case "unavailable":
+      case "failed":
+        return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-100 text-amber-800">Analysis unavailable</span>
+      default:
+        return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700">Image uploaded</span>
+    }
+  }
+
+  if (images.length === 0) {
+    return (
+      <div className="section-card space-y-2">
+        <h2 className="section-title flex items-center gap-2">
+          <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M3.75 4.875c0-.621.504-1.125 1.125-1.125h14.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 013.75 16.125V4.875z" />
+          </svg>
+          Supporting Images
+        </h2>
+        <div className="rounded-lg border border-dashed border-border/80 p-4 text-center text-xs text-muted-foreground bg-muted/20">
+          No image attached with this grievance.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="section-card space-y-4">
+      <h2 className="section-title flex items-center gap-2">
+        <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M3.75 4.875c0-.621.504-1.125 1.125-1.125h14.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 013.75 16.125V4.875z" />
+        </svg>
+        Supporting Images <span className="text-xs font-normal text-muted-foreground">({images.length})</span>
+      </h2>
+      {loading ? (
+        <div className="flex items-center gap-3 text-sm text-muted-foreground"><span className="spinner w-4 h-4" /> Loading images…</div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {images.map((img) => (
+            <div key={img.id} className="rounded-lg border bg-card p-3 space-y-3">
+              <button type="button" aria-label={`View ${img.filename}`}
+                onClick={() => setLightbox(blobUrls[img.id] ?? null)}
+                className="relative group rounded-md overflow-hidden border bg-muted aspect-video w-full focus:outline-none focus:ring-2 focus:ring-primary block">
+                {blobUrls[img.id] ? (
+                  <img src={blobUrls[img.id]} alt={img.filename} className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">Failed to load preview</div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2 py-1 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                  <p className="text-[10px] truncate">{img.filename}</p>
+                </div>
+              </button>
+              <div className="text-xs space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground font-mono text-[11px] truncate max-w-[140px]">{img.filename}</span>
+                  {getStatusBadge(img.analysis_status)}
+                </div>
+                {img.detected_issue && (
+                  <p className="font-medium text-foreground">
+                    Issue: {img.detected_issue}
+                    {img.analysis_confidence != null ? <span className="text-muted-foreground ml-1 font-normal">({Math.round(img.analysis_confidence * 100)}% conf)</span> : null}
+                  </p>
+                )}
+                {img.image_description && <p className="text-muted-foreground line-clamp-3">{img.image_description}</p>}
+                {!!img.visual_observations?.length && (
+                  <p className="text-muted-foreground"><span className="font-medium text-foreground/80">Visible:</span> {img.visual_observations.join(", ")}</p>
+                )}
+                {img.human_review_required && (
+                  <p className="text-amber-700 font-medium flex items-center gap-1 text-[11px]">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Human review required based on image findings
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {lightbox && (
+        <div role="dialog" aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setLightbox(null)}>
+          <button type="button" aria-label="Close" onClick={() => setLightbox(null)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+          <img src={lightbox} alt="Full size" className="max-w-full max-h-full rounded-xl shadow-2xl object-contain" onClick={(e) => e.stopPropagation()} />
+        </div>
+      )}
+    </div>
+  )
+}
 
 export function AdminGrievanceDetail() {
   const { id } = useParams<{ id: string }>()
@@ -178,23 +298,145 @@ export function AdminGrievanceDetail() {
         {/* Main content */}
         <div className="md:col-span-2 space-y-5">
           <div className="section-card space-y-4">
-            <h2 className="section-title">Citizen Complaint Statement</h2>
-            <div className="p-4 bg-muted/30 border rounded-lg text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-              {grievance.original_text}
+            <div className="flex items-center justify-between">
+              <h2 className="section-title">
+                {grievance.translation_status === "translated" && grievance.translated_text ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    English Translation (Default Oversight View)
+                  </span>
+                ) : (
+                  <span>Citizen Complaint Statement</span>
+                )}
+              </h2>
+              {grievance.detected_language && grievance.detected_language !== "English" && (
+                <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-sky-100 text-sky-800 border border-sky-200">
+                  Detected Language: {grievance.detected_language}
+                </span>
+              )}
             </div>
 
-            {grievance.translated_text &&
-              grievance.translated_text !== grievance.original_text && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-semibold text-muted-foreground">
-                  AI English Translation ({grievance.detected_language || "Detected"}):
-                </p>
-                <div className="p-3 bg-sky-50 border border-sky-200 rounded-lg text-xs italic text-sky-900 leading-relaxed">
-                  "{grievance.translated_text}"
+            {/* If translated, display English translation prominently as primary statement */}
+            {grievance.translation_status === "translated" && grievance.translated_text ? (
+              <div className="space-y-3">
+                <div className="p-4 bg-sky-50/70 border border-sky-200 rounded-lg text-sm leading-relaxed text-foreground whitespace-pre-wrap font-sans">
+                  {grievance.translated_text}
                 </div>
+
+                {/* Collapsible / labeled Original Text section */}
+                <details className="group rounded-lg border bg-muted/20 p-3">
+                  <summary className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5 transition-transform group-open:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                      View Original {grievance.detected_language || "Non-English"} Submission
+                    </span>
+                    <span className="text-[10px] font-mono text-muted-foreground">Original Text</span>
+                  </summary>
+                  <div className="mt-3 p-3 bg-muted/40 rounded border text-sm text-foreground whitespace-pre-wrap">
+                    {grievance.original_text}
+                  </div>
+                </details>
+              </div>
+            ) : (
+              /* Passthrough (English native) or Translation Pending/Unavailable */
+              <div className="space-y-3">
+                <div className="p-4 bg-muted/30 border rounded-lg text-sm leading-relaxed text-foreground whitespace-pre-wrap">
+                  {grievance.original_text}
+                </div>
+
+                {grievance.translation_status === "passthrough" && (
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    Submitted in English (no translation required).
+                  </p>
+                )}
+
+                {(grievance.translation_status === "unavailable" || grievance.translation_status === "failed") && grievance.detected_language !== "English" && (
+                  <div className="p-3 rounded-lg bg-amber-50/80 border border-amber-200 text-xs text-amber-900 space-y-1">
+                    <p className="font-semibold flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                      Translation Unavailable
+                    </p>
+                    <p className="text-muted-foreground">
+                      Automated translation provider was offline or not configured. The original {grievance.detected_language || "regional"} text is preserved above for manual review.
+                    </p>
+                  </div>
+                )}
+
+                {grievance.translation_status === "unsupported" && (
+                  <div className="p-3 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-800 space-y-1">
+                    <p className="font-semibold">Language Unsupported for Automated Translation</p>
+                    <p className="text-muted-foreground">
+                      Original complaint in {grievance.detected_language} has been flagged for human review.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
+
+            <div className="text-[11px] text-muted-foreground flex items-center gap-3 pt-1 border-t">
+              <span>Original Language: <strong className="text-foreground">{grievance.detected_language || "English"}</strong></span>
+              <span>·</span>
+              <span>Translation Status: <strong className="text-foreground">{grievance.translation_status || "unknown"}</strong></span>
+              {grievance.translation_method && (
+                <>
+                  <span>·</span>
+                  <span>Method: <span className="font-mono">{grievance.translation_method}</span></span>
+                </>
+              )}
+            </div>
           </div>
+
+          {/* Multi-Department Routing Overview */}
+          {grievance.assignments && grievance.assignments.length > 0 && (
+            <div className="section-card space-y-3">
+              <h2 className="section-title flex items-center justify-between">
+                <span>Multi-Department Assignments & Routing Rationale</span>
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({grievance.assignments.length} {grievance.assignments.length === 1 ? "Department" : "Departments"})
+                </span>
+              </h2>
+              <div className="space-y-2.5">
+                {grievance.assignments.map((assign) => (
+                  <div key={assign.id} className="p-3 rounded-lg border bg-card/60 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-sm text-foreground">
+                          {assign.department?.name || "Department"}
+                        </span>
+                        {assign.department?.code && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                            {assign.department.code}
+                          </span>
+                        )}
+                        {assign.assigned_officer && (
+                          <span className="text-[11px] text-muted-foreground">
+                            · Officer: <strong>{assign.assigned_officer.name}</strong>
+                          </span>
+                        )}
+                      </div>
+                      <StatusBadge status={assign.status} />
+                    </div>
+                    {assign.routing_reason && (
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        <strong className="text-foreground/80 font-medium">Routing Reason:</strong> {assign.routing_reason}
+                      </p>
+                    )}
+                    {assign.notes && (
+                      <p className="text-xs text-sky-800 bg-sky-50 px-2 py-1 rounded border border-sky-200">
+                        <strong>Department Notes:</strong> {assign.notes}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Image gallery */}
+          <ImageGallery grievanceId={grievance.id} images={grievance.images || []} routePrefix="/admin/grievances" />
 
           <StatusTimeline currentStatus={grievance.status} history={grievance.status_history} />
         </div>
@@ -212,6 +454,19 @@ export function AdminGrievanceDetail() {
                     <span className="ml-1.5 text-xs font-mono text-muted-foreground">({grievance.department.code})</span>
                   )}
                 </dd>
+                <div className="mt-1.5">
+                  {grievance.routing_status === "ASSIGNED" ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      ✓ Auto-Dispatched to Department Queue
+                    </span>
+                  ) : grievance.ai_review_required ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-300">
+                      ⚠ Pending Administrative Review
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground font-mono">Routing: {grievance.routing_status || "ASSIGNED"}</span>
+                  )}
+                </div>
               </div>
 
               <div className="border-b pb-3">

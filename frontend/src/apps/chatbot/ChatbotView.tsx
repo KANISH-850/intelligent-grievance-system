@@ -10,7 +10,7 @@ interface Message {
   text: string
   language?: string
   intent?: string
-  confidence?: number
+  confidence?: number | null
   explanation_terms?: string[]
   grievance?: {
     grievance_number: string
@@ -59,6 +59,8 @@ export function ChatbotView() {
   const [sessionContext, setSession]    = useState<Record<string, unknown> | null>(null)
   const [isLoading, setIsLoading]       = useState(false)
   const [error, setError]               = useState<string | null>(null)
+  const [failedQuery, setFailedQuery]   = useState<string | null>(null)
+  const sendingRef = useRef(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -66,9 +68,9 @@ export function ChatbotView() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, isLoading])
 
-  const handleSendMessage = async (textToSend?: string) => {
+  const handleSendMessage = async (textToSend?: string, isRetry = false) => {
     const query = (textToSend || inputText).trim()
-    if (!query || isLoading) return
+    if (!query || sendingRef.current) return
 
     const userMsg: Message = {
       id:        `user-${crypto.randomUUID()}`,
@@ -77,8 +79,8 @@ export function ChatbotView() {
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     }
 
-    setMessages((prev) => [...prev, userMsg])
-    if (!textToSend) setInputText("")
+    if (!isRetry) setMessages((prev) => [...prev, userMsg])
+    sendingRef.current = true
     setIsLoading(true)
     setError(null)
 
@@ -99,10 +101,14 @@ export function ChatbotView() {
         timestamp:        new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       }
       setMessages((prev) => [...prev, assistantMsg])
+      if (!textToSend) setInputText("")
+      setFailedQuery(null)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to communicate with AI Assistant."
-      setError(msg)
+      setFailedQuery(query)
+      const errorMsg = err instanceof Error ? err.message : "The assistant could not complete that request. Please retry."
+      setError(errorMsg)
     } finally {
+      sendingRef.current = false
       setIsLoading(false)
     }
   }
@@ -170,11 +176,6 @@ export function ChatbotView() {
                     <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-primary/10 text-primary border border-primary/20">
                       {msg.intent}
                     </span>
-                    {msg.confidence && (
-                      <span className="text-[10px] text-muted-foreground font-mono">
-                        {(msg.confidence * 100).toFixed(0)}% confidence
-                      </span>
-                    )}
                   </div>
                 )}
 
@@ -200,7 +201,14 @@ export function ChatbotView() {
                       <StatusBadge status={msg.grievance.status} />
                     </div>
                     <div className="flex items-center justify-between text-muted-foreground">
-                      <span>Dept: <strong className="text-foreground">{msg.grievance.department}</strong></span>
+                      <span>
+                        Dept:{" "}
+                        <strong className="text-foreground">
+                          {typeof msg.grievance.department === "object" && msg.grievance.department !== null
+                            ? (msg.grievance.department as { name?: string }).name || "Assigned Department"
+                            : String(msg.grievance.department || "Assigned Department")}
+                        </strong>
+                      </span>
                       {msg.grievance.category && <span>{msg.grievance.category}</span>}
                     </div>
                   </div>
@@ -237,9 +245,10 @@ export function ChatbotView() {
               </svg>
               {error}
             </span>
-            <button onClick={() => setError(null)} className="text-xs text-rose-600 hover:underline ml-3 flex-shrink-0">
-              Dismiss
-            </button>
+            <div className="flex gap-3 ml-3 flex-shrink-0">
+              {failedQuery && <button onClick={() => handleSendMessage(failedQuery, true)} className="text-xs text-rose-700 hover:underline">Retry</button>}
+              <button onClick={() => setError(null)} className="text-xs text-rose-600 hover:underline">Dismiss</button>
+            </div>
           </div>
         )}
 

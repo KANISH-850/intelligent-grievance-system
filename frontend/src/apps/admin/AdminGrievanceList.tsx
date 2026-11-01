@@ -75,7 +75,10 @@ export function AdminGrievanceList() {
       g.grievance_number.toLowerCase().includes(q) ||
       g.category.toLowerCase().includes(q) ||
       (g.user?.name ?? "").toLowerCase().includes(q) ||
-      (g.department?.name ?? "").toLowerCase().includes(q)
+      (g.department?.name ?? "").toLowerCase().includes(q) ||
+      (g.original_text || "").toLowerCase().includes(q) ||
+      (g.translated_text || "").toLowerCase().includes(q) ||
+      (g.detected_language || "").toLowerCase().includes(q)
     )
   })
 
