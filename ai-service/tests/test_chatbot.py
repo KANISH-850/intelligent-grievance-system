@@ -133,6 +133,30 @@ def test_context_awareness_followup():
     assert "GRV-2026-123456" in data["message"]
     assert "2026-09-15" in data["message"]
 
+def test_contextual_department_handling_followup():
+    payload = {
+        "message": "Which department is handling this?",
+        "session_context": {
+            "last_grievance_number": "GRV-2026-123456"
+        },
+        "user_grievances": [
+            {
+                "grievance_number": "GRV-2026-123456",
+                "status": "IN_PROGRESS",
+                "department": {"name": "Roads and Transport"},
+                "category": "Roads and Transport",
+                "created_at": "2026-09-15T10:00:00Z"
+            }
+        ]
+    }
+    response = client.post("/chatbot/process", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["intent"] == "GRIEVANCE_DETAILS"
+    assert "GRV-2026-123456" in data["message"]
+    assert "Roads and Transport" in data["message"]
+    assert "IN_PROGRESS" in data["message"]
+
 def test_ai_explanation_query():
     payload = {
         "message": "Why was my complaint classified as Water Supply?",

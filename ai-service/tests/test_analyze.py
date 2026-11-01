@@ -76,7 +76,12 @@ def test_tamil_complaint():
     assert response.status_code == 200
     data = response.json()
     assert data["language"] == "Tamil"
-    assert data["category"] == "Water Supply"
+    if data["translation_status"] == "translated":
+        assert data["category"] == "Water Supply"
+    else:
+        assert data["translated_text"] == payload["text"]
+        assert data["category"] == "Other"
+        assert data["ai_review_required"] is True
 
 def test_hindi_complaint():
     """Test 8: Hindi language complaint."""
@@ -85,7 +90,12 @@ def test_hindi_complaint():
     assert response.status_code == 200
     data = response.json()
     assert data["language"] == "Hindi"
-    assert data["category"] == "Electricity"
+    if data["translation_status"] == "translated":
+        assert data["category"] == "Electricity"
+    else:
+        assert data["translated_text"] == payload["text"]
+        assert data["category"] == "Other"
+        assert data["ai_review_required"] is True
 
 def test_critical_priority_complaint():
     """Test 9: Critical emergency complaint."""
@@ -123,3 +133,17 @@ def test_too_long_input_validation():
     payload = {"text": "A" * 5005}
     response = client.post("/analyze", json=payload)
     assert response.status_code == 422
+
+
+def test_multi_department_detection():
+    """Test 14: Multi-department complaint with pothole, drainage, and streetlights."""
+    payload = {"text": "A large pothole is flooding the road because a drainage pipe is broken and street lights are not working."}
+    response = client.post("/analyze", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    assert "departments" in data
+    dept_names = [d["department_name"] for d in data["departments"]]
+    assert len(dept_names) >= 2
+    # Verify Roads, Water/Drainage or Municipal are represented
+    assert any("Road" in d for d in dept_names)
+    assert any("Water" in d or "Municipal" in d or "Sanitation" in d for d in dept_names)

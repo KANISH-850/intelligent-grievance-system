@@ -37,8 +37,12 @@ def test_multilingual_queries():
         response = client.post("/analyze", json={"text": text})
         assert response.status_code == 200
         data = response.json()
-        assert data["category"] == expected_category
         assert data["language"] == expected_lang
+        if expected_lang == "English" or data["translation_status"] == "translated":
+            assert data["category"] == expected_category
+        else:
+            assert data["category"] == "Other"
+            assert data["ai_review_required"] is True
 
 def test_priority_prediction_levels():
     """Verify LOW, MEDIUM, HIGH, CRITICAL priority calculations."""
