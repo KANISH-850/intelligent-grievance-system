@@ -49,6 +49,20 @@ router.get(
   grievanceController.getGrievanceById
 );
 
+// Get all department assignments for a grievance
+router.get(
+  "/:id/assignments",
+  authenticate,
+  grievanceController.getGrievanceAssignments
+);
+
+// Get progress history for a specific department assignment
+router.get(
+  "/:id/assignments/:assignmentId/history",
+  authenticate,
+  grievanceController.getAssignmentHistory
+);
+
 // Serve a grievance image (protected — ownership + role enforced in controller)
 router.get(
   "/:id/images/:imageId",

@@ -161,12 +161,54 @@ const previewTranslation = async (req, res, next) => {
   }
 };
 
+/**
+ * @route   GET /api/v1/grievances/:id/assignments
+ * @desc    Get all department assignments for a specific parent grievance
+ * @access  Private (Citizen, Officer, Admin)
+ */
+const getGrievanceAssignments = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const assignments = await grievanceService.getGrievanceAssignments(id, req.user);
+
+    return res.status(200).json({
+      success: true,
+      data: assignments,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/v1/grievances/:id/assignments/:assignmentId/history
+ * @desc    Get progress history for a specific department assignment
+ * @access  Private (Citizen, Officer, Admin)
+ */
+const getAssignmentHistory = async (req, res, next) => {
+  try {
+    const { assignmentId } = req.params;
+    const officerService = require("../services/officer.service");
+    const history = await officerService.getAssignmentHistory(assignmentId, req.user);
+
+    return res.status(200).json({
+      success: true,
+      data: history,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createGrievance,
   getGrievances,
   getGrievanceById,
+  getGrievanceAssignments,
+  getAssignmentHistory,
   serveGrievanceImage,
   analyzePreSubmissionImage,
   previewTranslation,
 };
+
 

@@ -1,3 +1,4 @@
+
 const { prisma } = require("../config/database");
 const aiService = require("./ai.service");
 
@@ -305,13 +306,34 @@ const submitGrievance = async ({ userId, text, images = [] }) => {
     });
 
     // Create GrievanceDepartmentAssignment records for all assigned departments
+    const createdAssignments = [];
     for (const item of resolvedDeptAssignments) {
-      await tx.grievanceDepartmentAssignment.create({
+      const assignment = await tx.grievanceDepartmentAssignment.create({
         data: {
           grievance_id: grievance.id,
           department_id: item.department.id,
           status: "SUBMITTED",
           routing_reason: item.reason,
+          created_at: new Date(),
+        },
+        include: {
+          department: {
+            select: { id: true, name: true, code: true, description: true },
+          },
+        },
+      });
+      createdAssignments.push(assignment);
+
+      // Record initial department-specific assignment history
+      await tx.grievanceAssignmentHistory.create({
+        data: {
+          assignment_id: assignment.id,
+          grievance_id: grievance.id,
+          department_id: item.department.id,
+          previous_status: null,
+          status: "SUBMITTED",
+          remarks: item.reason || `Assignment created for ${item.department.name}`,
+          changed_by: userId,
         },
       });
     }
@@ -339,25 +361,26 @@ const submitGrievance = async ({ userId, text, images = [] }) => {
       },
     });
 
-    // High / Critical priority alert notification for officers across ALL assigned departments
-    if (priority === "HIGH" || priority === "CRITICAL") {
-      const allAssignedDeptIds = resolvedDeptAssignments.map((a) => a.department.id);
-      const deptOfficers = await tx.user.findMany({
-        where: { department_id: { in: allAssignedDeptIds }, role: "OFFICER" },
-        select: { id: true, department_id: true },
-      });
+    // Notify officers across ALL assigned departments
+    const allAssignedDeptIds = resolvedDeptAssignments.map((a) => a.department.id);
+    const deptOfficers = await tx.user.findMany({
+      where: { department_id: { in: allAssignedDeptIds }, role: "OFFICER" },
+      select: { id: true, department_id: true },
+    });
 
-      for (const off of deptOfficers) {
-        await tx.notification.create({
-          data: {
-            user_id: off.id,
-            grievance_id: grievance.id,
-            type: priority === "CRITICAL" ? "CRITICAL_PRIORITY" : "HIGH_PRIORITY",
-            title: priority === "CRITICAL" ? "Critical Grievance Received" : "High Priority Grievance Assigned",
-            message: `A ${priority.toLowerCase()} priority grievance ${grievance.grievance_number} has been assigned to your department.`,
-          },
-        });
-      }
+    for (const off of deptOfficers) {
+      const isUrgent = priority === "HIGH" || priority === "CRITICAL";
+      await tx.notification.create({
+        data: {
+          user_id: off.id,
+          grievance_id: grievance.id,
+          type: priority === "CRITICAL" ? "CRITICAL_PRIORITY" : priority === "HIGH" ? "HIGH_PRIORITY" : "GRIEVANCE_ASSIGNED",
+          title: priority === "CRITICAL" ? "Critical Grievance Received" : priority === "HIGH" ? "High Priority Grievance Assigned" : "Grievance Assigned to Department",
+          message: isUrgent
+            ? `A ${priority.toLowerCase()} priority grievance ${grievance.grievance_number} has been assigned to your department.`
+            : `Grievance ${grievance.grievance_number} has been assigned to your department for inspection and action.`,
+        },
+      });
     }
 
     // After grievance creation, store associated images if any
@@ -382,7 +405,11 @@ const submitGrievance = async ({ userId, text, images = [] }) => {
       }
     }
 
-    return grievance;
+    // Attach populated assignments to the returned grievance object
+    return {
+      ...grievance,
+      assignments: createdAssignments,
+    };
   });
       break;
     } catch (err) {
@@ -424,6 +451,9 @@ const getCitizenGrievances = async (userId) => {
             select: { id: true, name: true, code: true },
           },
         },
+        orderBy: {
+          created_at: "asc",
+        },
       },
       images: true,
     },
@@ -452,8 +482,20 @@ const getGrievanceById = async (id, requestingUser) => {
       assignments: {
         include: {
           department: {
-            select: { id: true, name: true, code: true },
+            select: { id: true, name: true, code: true, description: true },
           },
+          assigned_officer: {
+            select: { id: true, name: true, email: true },
+          },
+          history: {
+            include: {
+              user: { select: { id: true, name: true, role: true } },
+            },
+            orderBy: { created_at: "asc" },
+          },
+        },
+        orderBy: {
+          created_at: "asc",
         },
       },
       images: true,
@@ -491,11 +533,76 @@ const getGrievanceById = async (id, requestingUser) => {
     throw error;
   }
 
+  // Security Check: Officer can ONLY view grievances belonging to or assigned to their department
+  if (requestingUser.role === "OFFICER") {
+    const isAssigned =
+      grievance.department_id === requestingUser.department_id ||
+      (grievance.assignments && grievance.assignments.some((a) => a.department_id === requestingUser.department_id));
+    if (!isAssigned) {
+      const error = new Error("Grievance not found");
+      error.statusCode = 404;
+      throw error;
+    }
+  }
+
   return grievance;
+};
+
+/**
+ * Retrieve all assignments for a specific parent grievance with authorization checks.
+ */
+const getGrievanceAssignments = async (grievanceId, requestingUser) => {
+  const grievance = await prisma.grievance.findUnique({
+    where: { id: grievanceId },
+    select: { id: true, user_id: true, department_id: true },
+  });
+
+  if (!grievance) {
+    const error = new Error("Grievance not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (requestingUser.role === "CITIZEN" && grievance.user_id !== requestingUser.id) {
+    const error = new Error("Grievance not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const assignments = await prisma.grievanceDepartmentAssignment.findMany({
+    where: { grievance_id: grievanceId },
+    include: {
+      department: {
+        select: { id: true, name: true, code: true, description: true },
+      },
+      assigned_officer: {
+        select: { id: true, name: true, email: true },
+      },
+      history: {
+        include: {
+          user: { select: { id: true, name: true, role: true } },
+        },
+        orderBy: { created_at: "asc" },
+      },
+    },
+    orderBy: { created_at: "asc" },
+  });
+
+  if (requestingUser.role === "OFFICER") {
+    const hasDept = assignments.some((a) => a.department_id === requestingUser.department_id) || grievance.department_id === requestingUser.department_id;
+    if (!hasDept) {
+      const error = new Error("Grievance not found");
+      error.statusCode = 404;
+      throw error;
+    }
+  }
+
+  return assignments;
 };
 
 module.exports = {
   submitGrievance,
   getCitizenGrievances,
   getGrievanceById,
+  getGrievanceAssignments,
 };
