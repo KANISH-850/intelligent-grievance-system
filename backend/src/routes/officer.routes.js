@@ -13,6 +13,9 @@ router.get("/grievances", officerController.getOfficerGrievances);
 // Officer Department Single Grievance Detail
 router.get("/grievances/:id", officerController.getOfficerGrievanceById);
 
+// Serve grievance image (officer must belong to the grievance's department)
+router.get("/grievances/:id/images/:imageId", officerController.serveOfficerGrievanceImage);
+
 // Officer Department Status Update
 router.patch("/grievances/:id/status", officerController.updateGrievanceStatus);
 

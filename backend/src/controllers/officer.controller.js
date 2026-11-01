@@ -80,9 +80,43 @@ const getOfficerAnalytics = async (req, res, next) => {
   }
 };
 
+/**
+ * @route   GET /api/v1/officer/grievances/:id/images/:imageId
+ * @desc    Stream a grievance image (officer must belong to the grievance's department)
+ * @access  Private (Officer)
+ */
+const serveOfficerGrievanceImage = async (req, res, next) => {
+  try {
+    const { id, imageId } = req.params;
+    const grievance = await officerService.getOfficerGrievanceById(id, req.user);
+
+    const image = (grievance.images || []).find((img) => img.id === imageId);
+    if (!image) {
+      const err = new Error("Image not found");
+      err.statusCode = 404;
+      return next(err);
+    }
+
+    const fs = require("fs");
+    if (!fs.existsSync(image.path)) {
+      const err = new Error("Image file missing on server");
+      err.statusCode = 404;
+      return next(err);
+    }
+
+    res.setHeader("Content-Type", image.mime_type);
+    res.setHeader("Content-Length", image.size);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    fs.createReadStream(image.path).pipe(res);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getOfficerGrievances,
   getOfficerGrievanceById,
   updateGrievanceStatus,
   getOfficerAnalytics,
+  serveOfficerGrievanceImage,
 };

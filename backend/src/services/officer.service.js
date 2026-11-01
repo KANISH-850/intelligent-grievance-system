@@ -3,6 +3,7 @@ const { validateStatusTransition } = require("./statusTransition.service");
 
 /**
  * Fetch grievances assigned to the Officer's department.
+ * Matches either legacy grievance.department_id OR any assignment in grievance_department_assignments.
  */
 const getDepartmentGrievances = async (officerUser, filters = {}) => {
   if (!officerUser.department_id) {
@@ -12,9 +13,13 @@ const getDepartmentGrievances = async (officerUser, filters = {}) => {
   }
 
   const { status, priority } = filters;
+  const deptId = officerUser.department_id;
 
   const whereClause = {
-    department_id: officerUser.department_id,
+    OR: [
+      { department_id: deptId },
+      { assignments: { some: { department_id: deptId } } },
+    ],
   };
 
   if (status) {
@@ -33,6 +38,13 @@ const getDepartmentGrievances = async (officerUser, filters = {}) => {
           id: true,
           name: true,
           code: true,
+        },
+      },
+      assignments: {
+        include: {
+          department: {
+            select: { id: true, name: true, code: true },
+          },
         },
       },
       user: {
@@ -61,6 +73,8 @@ const getOfficerGrievanceById = async (id, officerUser) => {
     throw error;
   }
 
+  const deptId = officerUser.department_id;
+
   const grievance = await prisma.grievance.findUnique({
     where: { id },
     include: {
@@ -69,6 +83,16 @@ const getOfficerGrievanceById = async (id, officerUser) => {
           id: true,
           name: true,
           code: true,
+        },
+      },
+      assignments: {
+        include: {
+          department: {
+            select: { id: true, name: true, code: true },
+          },
+          assigned_officer: {
+            select: { id: true, name: true, email: true },
+          },
         },
       },
       user: {
@@ -96,10 +120,16 @@ const getOfficerGrievanceById = async (id, officerUser) => {
           created_at: "asc",
         },
       },
+      images: true,
     },
   });
 
-  if (!grievance || grievance.department_id !== officerUser.department_id) {
+  const isAssigned = grievance && (
+    grievance.department_id === deptId ||
+    grievance.assignments?.some((a) => a.department_id === deptId)
+  );
+
+  if (!grievance || !isAssigned) {
     const error = new Error("Grievance not found");
     error.statusCode = 404;
     throw error;
@@ -109,7 +139,8 @@ const getOfficerGrievanceById = async (id, officerUser) => {
 };
 
 /**
- * Update grievance status with status transition validation and Prisma transaction.
+ * Update grievance status with status transition validation, isolated department assignment update,
+ * and composite grievance status calculation.
  */
 const updateOfficerGrievanceStatus = async (id, officerUser, { status, remarks }) => {
   if (!officerUser.department_id) {
@@ -118,31 +149,82 @@ const updateOfficerGrievanceStatus = async (id, officerUser, { status, remarks }
     throw error;
   }
 
+  const deptId = officerUser.department_id;
+
   const grievance = await prisma.grievance.findUnique({
     where: { id },
+    include: {
+      assignments: true,
+    },
   });
 
+  const isAssigned = grievance && (
+    grievance.department_id === deptId ||
+    grievance.assignments?.some((a) => a.department_id === deptId)
+  );
+
   // Department ownership security check
-  if (!grievance || grievance.department_id !== officerUser.department_id) {
+  if (!grievance || !isAssigned) {
     const error = new Error("Grievance not found");
     error.statusCode = 404;
     throw error;
   }
 
-  // Validate status transition & remarks
+  // Find officer's department assignment or fallback to grievance status
+  const officerAssignment = grievance.assignments?.find((a) => a.department_id === deptId);
+  const currentDeptStatus = officerAssignment ? officerAssignment.status : grievance.status;
+
+  // Validate status transition & remarks against current department assignment status
   const { targetStatus, remarks: cleanRemarks } = validateStatusTransition({
-    currentStatus: grievance.status,
+    currentStatus: currentDeptStatus,
     targetStatus: status,
     remarks,
     userRole: "OFFICER",
   });
 
-  // Perform transactional status update & status history creation
+  // Perform transactional status update
   const updatedGrievance = await prisma.$transaction(async (tx) => {
+    // 1. Update department assignment for this officer's department
+    if (officerAssignment) {
+      await tx.grievanceDepartmentAssignment.update({
+        where: { id: officerAssignment.id },
+        data: {
+          status: targetStatus,
+          notes: cleanRemarks || officerAssignment.notes,
+          assigned_officer_id: officerUser.id,
+          updated_at: new Date(),
+        },
+      });
+    }
+
+    // 2. Fetch all assignments to compute composite grievance status
+    const allAssignments = await tx.grievanceDepartmentAssignment.findMany({
+      where: { grievance_id: id },
+    });
+
+    let compositeStatus = targetStatus;
+    if (allAssignments.length > 0) {
+      const statuses = allAssignments.map((a) =>
+        a.department_id === deptId ? targetStatus : a.status
+      );
+      // All resolved => RESOLVED
+      if (statuses.every((s) => s === "RESOLVED")) {
+        compositeStatus = "RESOLVED";
+      } else if (statuses.every((s) => s === "REJECTED")) {
+        compositeStatus = "REJECTED";
+      } else if (statuses.some((s) => s === "IN_PROGRESS")) {
+        compositeStatus = "IN_PROGRESS";
+      } else if (statuses.some((s) => s === "UNDER_REVIEW")) {
+        compositeStatus = "UNDER_REVIEW";
+      } else {
+        compositeStatus = "ASSIGNED";
+      }
+    }
+
     const updated = await tx.grievance.update({
       where: { id },
       data: {
-        status: targetStatus,
+        status: compositeStatus,
         updated_at: new Date(),
       },
       include: {
@@ -151,6 +233,13 @@ const updateOfficerGrievanceStatus = async (id, officerUser, { status, remarks }
             id: true,
             name: true,
             code: true,
+          },
+        },
+        assignments: {
+          include: {
+            department: {
+              select: { id: true, name: true, code: true },
+            },
           },
         },
         user: {
@@ -173,8 +262,8 @@ const updateOfficerGrievanceStatus = async (id, officerUser, { status, remarks }
     });
 
     let notifType = "STATUS_CHANGED";
-    if (targetStatus === "RESOLVED") notifType = "GRIEVANCE_RESOLVED";
-    if (targetStatus === "REJECTED") notifType = "GRIEVANCE_REJECTED";
+    if (compositeStatus === "RESOLVED") notifType = "GRIEVANCE_RESOLVED";
+    if (compositeStatus === "REJECTED") notifType = "GRIEVANCE_REJECTED";
 
     await tx.notification.create({
       data: {
@@ -182,7 +271,7 @@ const updateOfficerGrievanceStatus = async (id, officerUser, { status, remarks }
         grievance_id: id,
         type: notifType,
         title: `Grievance Status: ${targetStatus.replace("_", " ")}`,
-        message: `Your grievance ${grievance.grievance_number} has been updated to ${targetStatus}.${cleanRemarks ? ` Remarks: ${cleanRemarks}` : ""}`,
+        message: `Your grievance ${grievance.grievance_number} department progress updated to ${targetStatus}.${cleanRemarks ? ` Remarks: ${cleanRemarks}` : ""}`,
       },
     });
 
