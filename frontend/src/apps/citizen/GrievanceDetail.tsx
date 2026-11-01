@@ -1,18 +1,178 @@
 import { useEffect, useState } from "react"
 import { useParams, Link } from "react-router-dom"
-import { getCitizenGrievanceByIdApi } from "@/core/api/grievanceApi"
-import type { Grievance } from "@/shared/types/grievance"
+import { getCitizenGrievanceByIdApi, fetchGrievanceImageBlob } from "@/core/api/grievanceApi"
+import type { Grievance, GrievanceImage } from "@/shared/types/grievance"
 import { StatusBadge } from "@/shared/ui/StatusBadge"
 import { PriorityBadge } from "@/shared/ui/PriorityBadge"
 import { StatusTimeline } from "@/shared/ui/StatusTimeline"
 import { Button } from "@/shared/ui/button"
 
+/* ── Inline image gallery ─────────────────────────────── */
+function ImageGallery({ grievanceId, images }: { grievanceId: string; images: GrievanceImage[] }) {
+  const [blobUrls, setBlobUrls] = useState<Record<string, string>>({})
+  const [loading, setLoading] = useState(images.length > 0)
+  const [lightbox, setLightbox] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (images.length === 0) return
+    let cancelled = false
+    Promise.allSettled(
+      images.map(async (img) => {
+        const url = await fetchGrievanceImageBlob(grievanceId, img.id)
+        return [img.id, url] as [string, string]
+      })
+    ).then((results) => {
+      if (cancelled) return
+      const map: Record<string, string> = {}
+      results.forEach((r) => { if (r.status === "fulfilled") map[r.value[0]] = r.value[1] })
+      setBlobUrls(map)
+      setLoading(false)
+    })
+    return () => {
+      cancelled = true
+      Object.values(blobUrls).forEach((u) => URL.revokeObjectURL(u))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [images, grievanceId])
+
+  if (images.length === 0) {
+    return (
+      <div className="section-card space-y-2">
+        <h2 className="section-title flex items-center gap-2">
+          <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M3.75 4.875c0-.621.504-1.125 1.125-1.125h14.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 013.75 16.125V4.875z" />
+          </svg>
+          Supporting Images
+        </h2>
+        <div className="p-3 bg-muted/20 border border-dashed rounded-lg text-xs text-muted-foreground">
+          No image attached with this grievance.
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="section-card space-y-4">
+      <h2 className="section-title flex items-center gap-2">
+        <svg className="w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 20.25h18M3.75 4.875c0-.621.504-1.125 1.125-1.125h14.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125H4.875A1.125 1.125 0 013.75 16.125V4.875z" />
+        </svg>
+        Supporting Images
+        <span className="text-xs font-normal text-muted-foreground">({images.length})</span>
+      </h2>
+
+      {loading ? (
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span className="spinner w-4 h-4" />
+          Loading images…
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {images.map((img) => (
+            <div key={img.id} className="border rounded-xl p-3 bg-muted/20 space-y-2.5">
+              <button
+                type="button"
+                aria-label={`View ${img.filename}`}
+                onClick={() => setLightbox(blobUrls[img.id] ?? null)}
+                className="relative group rounded-lg overflow-hidden border bg-muted aspect-video w-full focus:outline-none focus:ring-2 focus:ring-primary block"
+              >
+                {blobUrls[img.id] ? (
+                  <img
+                    src={blobUrls[img.id]}
+                    alt={img.filename}
+                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                    Image loading…
+                  </div>
+                )}
+                <div className="absolute inset-x-0 bottom-0 bg-black/60 px-2.5 py-1 text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                  <p className="text-[10px] truncate">{img.filename}</p>
+                </div>
+              </button>
+
+              <div className="text-xs space-y-1.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <span className="font-mono text-[11px] font-semibold truncate max-w-[150px]">{img.filename}</span>
+                  {img.analysis_status === "analyzed" ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      Analysis completed
+                    </span>
+                  ) : img.analysis_status === "pending" ? (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                      Analysis in progress
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                      Analysis unavailable
+                    </span>
+                  )}
+                </div>
+
+                {img.detected_issue && (
+                  <p className="text-foreground font-medium">
+                    <span className="text-muted-foreground font-normal">Identified Issue:</span> {img.detected_issue}
+                  </p>
+                )}
+                {img.image_description && (
+                  <p className="text-muted-foreground leading-relaxed italic">
+                    "{img.image_description}"
+                  </p>
+                )}
+                {!!img.visual_observations?.length && (
+                  <p className="text-muted-foreground text-[11px]">
+                    <strong className="text-foreground font-medium">Visible evidence:</strong> {img.visual_observations.join("; ")}
+                  </p>
+                )}
+                {img.human_review_required && (
+                  <p className="text-amber-700 text-[11px] font-medium flex items-center gap-1">
+                    <span>⚠ Visual human review recommended</span>
+                  </p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <button
+            type="button"
+            aria-label="Close image"
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+            onClick={() => setLightbox(null)}
+          >
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={lightbox}
+            alt="Full size preview"
+            className="max-w-full max-h-full rounded-xl shadow-2xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ── Main component ───────────────────────────────────── */
 export function GrievanceDetail() {
   const { id } = useParams<{ id: string }>()
-  const [grievance, setGrievance]     = useState<Grievance | null>(null)
-  const [isLoading, setIsLoading]     = useState(true)
-  const [error, setError]             = useState<string | null>(null)
-  const [reloadTrigger, setReload]    = useState(0)
+  const [grievance, setGrievance]   = useState<Grievance | null>(null)
+  const [isLoading, setIsLoading]   = useState(true)
+  const [error, setError]           = useState<string | null>(null)
+  const [reloadTrigger, setReload]  = useState(0)
 
   useEffect(() => {
     if (!id) return
@@ -93,7 +253,7 @@ export function GrievanceDetail() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Left: complaint + timeline */}
+        {/* Left: complaint + images + timeline */}
         <div className="md:col-span-2 space-y-5">
           {/* Complaint text */}
           <div className="section-card space-y-4">
@@ -114,7 +274,16 @@ export function GrievanceDetail() {
                 </div>
               </div>
             )}
+            <p className="text-xs text-muted-foreground">
+              Original language: <span className="font-medium text-foreground">{grievance.detected_language || "English"}</span>
+              {grievance.translation_status && (
+                <> · Translation status: <span className="font-medium text-foreground">{grievance.translation_status}</span></>
+              )}
+            </p>
           </div>
+
+          {/* Image gallery */}
+          <ImageGallery grievanceId={grievance.id} images={grievance.images || []} />
 
           {/* Status timeline */}
           <StatusTimeline currentStatus={grievance.status} history={grievance.status_history} />
@@ -134,6 +303,23 @@ export function GrievanceDetail() {
                     <span className="ml-1.5 text-xs font-mono text-muted-foreground">
                       [{grievance.department.code}]
                     </span>
+                  )}
+                </dd>
+              </div>
+
+              <div className="border-b pb-3">
+                <dt className="text-xs text-muted-foreground font-medium mb-1">Dispatch Status</dt>
+                <dd className="text-xs font-semibold">
+                  {grievance.routing_status === "ASSIGNED" || grievance.routing_status === "DISPATCHED" ? (
+                    <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      Dispatched to Department
+                    </span>
+                  ) : grievance.ai_review_required ? (
+                    <span className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      Pending Administrative Review
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">{grievance.routing_status || "In Routing"}</span>
                   )}
                 </dd>
               </div>
