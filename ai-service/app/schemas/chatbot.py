@@ -25,7 +25,7 @@ class ChatbotResponse(BaseModel):
     message: str
     language: str
     intent: str
-    confidence: float = Field(default=0.90, description="Intent detection confidence score")
+    confidence: Optional[float] = Field(default=None, description="Intent detection confidence score (omitted when uncalibrated)")
     grievance_number: Optional[str] = Field(default=None, description="Extracted grievance reference number")
     grievance: Optional[ChatbotGrievanceDetail] = None
     session_context: Optional[Dict[str, Any]] = Field(default=None, description="Updated session memory")
