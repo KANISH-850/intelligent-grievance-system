@@ -415,5 +415,84 @@ describe("Phase 6 — Officer & Admin Management Workflows Test Suite", () => {
       assert.equal(res.body.success, false);
       assert.equal(res.body.message, "Grievance not found");
     });
+
+    it("25. Multi-department assignments track independent statuses and composite resolution", async () => {
+      // Create a multi-department grievance assigned to both Water and Electricity
+      const multiG = await prisma.grievance.create({
+        data: {
+          grievance_number: `GRV-TEST-MULTI-${Date.now()}`,
+          user_id: citizenUser.id,
+          original_text: "Drainage leaking onto transformer pole creating water and power hazard.",
+          detected_language: "English",
+          translated_text: "Drainage leaking onto transformer pole creating water and power hazard.",
+          category: "Water Supply",
+          priority: "HIGH",
+          department_id: waterDept.id,
+          status: "ASSIGNED",
+          assignments: {
+            create: [
+              { department_id: waterDept.id, status: "ASSIGNED", routing_reason: "Primary water hazard" },
+              { department_id: elecDept.id, status: "ASSIGNED", routing_reason: "Secondary electricity hazard" },
+            ],
+          },
+        },
+        include: { assignments: true },
+      });
+
+      // Officer Water updates status to IN_PROGRESS
+      const resWater = await request
+        .patch(`/api/v1/officer/grievances/${multiG.id}/status`)
+        .set("Authorization", `Bearer ${waterOfficerToken}`)
+        .send({ status: "IN_PROGRESS", remarks: "Water team deployed to repair pipe." });
+      assert.equal(resWater.status, 200);
+
+      // Verify overall status is IN_PROGRESS
+      const fetchG = await prisma.grievance.findUnique({
+        where: { id: multiG.id },
+        include: { assignments: true },
+      });
+      assert.equal(fetchG.status, "IN_PROGRESS");
+      const waterAssign = fetchG.assignments.find((a) => a.department_id === waterDept.id);
+      const elecAssign = fetchG.assignments.find((a) => a.department_id === elecDept.id);
+      assert.equal(waterAssign.status, "IN_PROGRESS");
+      assert.equal(elecAssign.status, "ASSIGNED");
+
+      // Officer Water resolves water portion
+      await request
+        .patch(`/api/v1/officer/grievances/${multiG.id}/status`)
+        .set("Authorization", `Bearer ${waterOfficerToken}`)
+        .send({ status: "RESOLVED", remarks: "Water leak fixed." });
+
+      // Grievance should NOT be fully resolved yet because electricity is still pending
+      const midFetch = await prisma.grievance.findUnique({
+        where: { id: multiG.id },
+        include: { assignments: true },
+      });
+      assert.notEqual(midFetch.status, "RESOLVED");
+
+      // Officer Elec updates electricity portion to IN_PROGRESS then RESOLVED
+      await request
+        .patch(`/api/v1/officer/grievances/${multiG.id}/status`)
+        .set("Authorization", `Bearer ${electricityOfficerToken}`)
+        .send({ status: "IN_PROGRESS", remarks: "Transformer inspection underway." });
+
+      await request
+        .patch(`/api/v1/officer/grievances/${multiG.id}/status`)
+        .set("Authorization", `Bearer ${electricityOfficerToken}`)
+        .send({ status: "RESOLVED", remarks: "Transformer inspection complete." });
+
+      // Now both departments are resolved -> composite status should be RESOLVED
+      const finalFetch = await prisma.grievance.findUnique({
+        where: { id: multiG.id },
+        include: { assignments: true },
+      });
+      assert.equal(finalFetch.status, "RESOLVED");
+
+      // Cleanup multiG
+      await prisma.grievanceDepartmentAssignment.deleteMany({ where: { grievance_id: multiG.id } });
+      await prisma.grievanceStatusHistory.deleteMany({ where: { grievance_id: multiG.id } });
+      await prisma.notification.deleteMany({ where: { grievance_id: multiG.id } });
+      await prisma.grievance.delete({ where: { id: multiG.id } });
+    });
   });
 });

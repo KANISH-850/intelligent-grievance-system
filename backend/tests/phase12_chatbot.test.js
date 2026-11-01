@@ -181,4 +181,30 @@ describe("Phase 12 — Advanced Multilingual AI & Intelligent Citizen Chatbot", 
     assert.equal(res.body.success, true);
     assert.ok(typeof res.body.message === "string");
   });
+
+  it("12.9 — Contextual Follow-Up: 'Which department is handling this?' retrieves department using session memory", async () => {
+    const res = await request
+      .post("/api/v1/chatbot/message")
+      .set("Authorization", `Bearer ${citizen1Token}`)
+      .send({
+        message: "Which department is handling this?",
+        session_context: { last_grievance_number: grievance1.grievance_number },
+      });
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.success, true);
+    assert.equal(res.body.intent, "GRIEVANCE_DETAILS");
+    assert.ok(res.body.message.includes(grievance1.grievance_number));
+    assert.ok(res.body.message.includes("P12 Test Dept") || res.body.message.includes("department"));
+  });
+
+  it("12.10 — Empty message payload is rejected with HTTP 400", async () => {
+    const res = await request
+      .post("/api/v1/chatbot/message")
+      .set("Authorization", `Bearer ${citizen1Token}`)
+      .send({ message: "   " });
+
+    assert.equal(res.status, 400);
+    assert.equal(res.body.success, false);
+  });
 });

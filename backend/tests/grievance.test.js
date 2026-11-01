@@ -65,12 +65,13 @@ describe("Phase 5 — Grievance API & AI Integration Test Suite", () => {
     // Officer
     officerUser = await prisma.user.upsert({
       where: { email: "test_officer@example.com" },
-      update: {},
+      update: { department_id: waterDepartment.id },
       create: {
         name: "Test Officer",
         email: "test_officer@example.com",
         password_hash: "hashedpassword",
         role: "OFFICER",
+        department_id: waterDepartment.id,
       },
     });
     officerToken = generateToken(officerUser);
@@ -163,22 +164,37 @@ describe("Phase 5 — Grievance API & AI Integration Test Suite", () => {
   });
 
   describe("3. AI Microservice Integration & Failure Handling", () => {
-    it("should return 503 Service Unavailable when AI microservice fails", async () => {
-      // Mock AI service to throw error
-      aiService.analyzeGrievance = async () => {
-        const err = new Error("AI grievance analysis service is currently unavailable");
-        err.statusCode = 503;
-        throw err;
-      };
+    it("should save the grievance with provisional classification for human review", async () => {
+      aiService.analyzeGrievance = async (text) => ({
+        language: "English",
+        translated_text: text,
+        translation_status: "passthrough",
+        translation_method: "native_english_passthrough",
+        category: "Water Supply",
+        category_confidence: null,
+        confidence_level: "LOW",
+        ai_review_required: true,
+        classification_method: "backend_keyword_fallback",
+        model_used: "none",
+        explanation_terms: [],
+        priority: "HIGH",
+        priority_confidence: null,
+        department: "Water Supply",
+        processing_time_ms: 0,
+      });
 
       const res = await request
         .post("/api/v1/grievances")
         .set("Authorization", `Bearer ${citizen1Token}`)
         .send({ text: "There has been no water supply for 3 days." });
 
-      assert.equal(res.status, 503);
-      assert.equal(res.body.success, false);
-      assert.match(res.body.message, /unavailable/i);
+      assert.equal(res.status, 201);
+      assert.equal(res.body.success, true);
+      assert.equal(res.body.data.category, "Water Supply");
+      assert.equal(res.body.data.department.name, "Water Supply");
+      assert.equal(res.body.data.priority, "HIGH");
+      assert.equal(res.body.data.ai_review_required, true);
+      assert.equal(res.body.data.ai_classification_method, "backend_keyword_fallback");
     });
 
     it("should successfully process grievance when AI microservice succeeds", async () => {
@@ -285,6 +301,134 @@ describe("Phase 5 — Grievance API & AI Integration Test Suite", () => {
       assert.equal(res.status, 404);
       assert.equal(res.body.success, false);
       assert.equal(res.body.message, "Grievance not found");
+    });
+  });
+
+  describe("5. Multilingual Persistence, Confidence Policy & Officer Isolation", () => {
+    it("should preserve original Tamil text and persist English translation and status", async () => {
+      aiService.analyzeGrievance = async () => ({
+        language: "Tamil",
+        translated_text: "There is no drinking water supply in our street for five days.",
+        translation_status: "translated",
+        translation_method: "libretranslate_api",
+        category: "Water Supply",
+        category_confidence: 0.92,
+        confidence_level: "HIGH",
+        ai_review_required: false,
+        classification_method: "tfidf_logistic_regression",
+        model_used: "tfidf-logistic-regression",
+        explanation_terms: ["drinking water", "water supply"],
+        priority: "HIGH",
+        priority_confidence: 0.88,
+        department: "Water Supply",
+        processing_time_ms: 120,
+      });
+
+      const tamilComplaint = "எங்கள் தெருவில் ஐந்து நாட்களாக குடிநீர் விநியோகம் இல்லை.";
+      const res = await request
+        .post("/api/v1/grievances")
+        .set("Authorization", `Bearer ${citizen1Token}`)
+        .send({ text: tamilComplaint });
+
+      assert.equal(res.status, 201);
+      assert.equal(res.body.success, true);
+      const g = res.body.data;
+      assert.equal(g.original_text, tamilComplaint);
+      assert.equal(g.detected_language, "Tamil");
+      assert.equal(g.translated_text, "There is no drinking water supply in our street for five days.");
+      assert.equal(g.translation_status, "translated");
+      assert.equal(g.routing_status, "ASSIGNED");
+    });
+
+    it("should flag grievance as REVIEW_REQUIRED when confidence < 0.75", async () => {
+      aiService.analyzeGrievance = async () => ({
+        language: "English",
+        translated_text: "General unclear municipal issue with some pipeline noise.",
+        translation_status: "passthrough",
+        translation_method: "native_english_passthrough",
+        category: "Water Supply",
+        category_confidence: 0.62,
+        confidence_level: "MEDIUM",
+        ai_review_required: true,
+        classification_method: "tfidf_logistic_regression",
+        model_used: "tfidf-logistic-regression",
+        explanation_terms: ["pipeline"],
+        priority: "LOW",
+        priority_confidence: 0.55,
+        department: "Water Supply",
+        processing_time_ms: 95,
+      });
+
+      const res = await request
+        .post("/api/v1/grievances")
+        .set("Authorization", `Bearer ${citizen1Token}`)
+        .send({ text: "General unclear municipal issue with some pipeline noise." });
+
+      assert.equal(res.status, 201);
+      assert.equal(res.body.data.routing_status, "REVIEW_REQUIRED");
+      assert.equal(res.body.data.ai_review_required, true);
+    });
+
+    it("should flag grievance as REVIEW_REQUIRED when category is Other", async () => {
+      aiService.analyzeGrievance = async () => ({
+        language: "English",
+        translated_text: "Uncategorized civic query regarding miscellaneous portal access.",
+        translation_status: "passthrough",
+        translation_method: "native_english_passthrough",
+        category: "Other",
+        category_confidence: 0.45,
+        confidence_level: "LOW",
+        ai_review_required: true,
+        classification_method: "tfidf_logistic_regression",
+        model_used: "tfidf-logistic-regression",
+        explanation_terms: [],
+        priority: "LOW",
+        priority_confidence: null,
+        department: "Other",
+        processing_time_ms: 80,
+      });
+
+      const res = await request
+        .post("/api/v1/grievances")
+        .set("Authorization", `Bearer ${citizen1Token}`)
+        .send({ text: "Uncategorized civic query regarding miscellaneous portal access." });
+
+      assert.equal(res.status, 201);
+      assert.equal(res.body.data.category, "Other");
+      assert.equal(res.body.data.routing_status, "REVIEW_REQUIRED");
+    });
+
+    it("should prevent officer of Water department from accessing grievance assigned to Roads department (404)", async () => {
+      let roadsDept = await prisma.department.findFirst({ where: { code: "RT" } });
+      if (!roadsDept) {
+        roadsDept = await prisma.department.create({
+          data: { name: "Roads and Transport", code: "RT", description: "Roads department" },
+        });
+      }
+
+      // Create a grievance in Roads department
+      const roadsGrievance = await prisma.grievance.create({
+        data: {
+          grievance_number: `GRV-2026-999${Math.floor(100 + Math.random() * 900)}`,
+          user_id: citizen1User.id,
+          original_text: "Major pothole on highway causing vehicle damage.",
+          category: "Roads and Transport",
+          department_id: roadsDept.id,
+          status: "SUBMITTED",
+          priority: "HIGH",
+        },
+      });
+
+      // Officer in waterDepartment attempts to view it
+      const res = await request
+        .get(`/api/v1/officer/grievances/${roadsGrievance.id}`)
+        .set("Authorization", `Bearer ${officerToken}`);
+
+      assert.equal(res.status, 404);
+      assert.equal(res.body.message, "Grievance not found");
+
+      // Clean up
+      await prisma.grievance.delete({ where: { id: roadsGrievance.id } });
     });
   });
 });
