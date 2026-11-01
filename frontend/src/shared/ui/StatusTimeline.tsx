@@ -14,13 +14,15 @@ const STEP_LABELS: Record<Status, string> = {
   ASSIGNED:     "Assigned",
   UNDER_REVIEW: "Under Review",
   IN_PROGRESS:  "In Progress",
+  PARTIALLY_RESOLVED: "Partially Resolved",
   RESOLVED:     "Resolved",
   REJECTED:     "Rejected",
 }
 
 export const StatusTimeline: React.FC<StatusTimelineProps> = ({ currentStatus, history = [] }) => {
   const isRejected = currentStatus === "REJECTED"
-  const currentIdx = WORKFLOW_STEPS.indexOf(currentStatus)
+  const effectiveStatus = currentStatus === "PARTIALLY_RESOLVED" ? "IN_PROGRESS" : currentStatus
+  const currentIdx = WORKFLOW_STEPS.indexOf(effectiveStatus)
 
   return (
     <div className="space-y-5">

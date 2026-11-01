@@ -4,6 +4,8 @@ import type {
   Grievance,
   ApiResponse,
   Department,
+  DepartmentAssignment,
+  GrievanceAssignmentHistory,
   ChatbotMessageResponse,
   AnalyticsData,
   AIAnalyticsData,
@@ -123,6 +125,21 @@ export async function getCitizenGrievanceByIdApi(id: string): Promise<ApiRespons
   return apiFetch<ApiResponse<Grievance>>(`/grievances/${id}`)
 }
 
+export async function getGrievanceAssignmentsApi(
+  grievanceId: string
+): Promise<ApiResponse<DepartmentAssignment[]>> {
+  return apiFetch<ApiResponse<DepartmentAssignment[]>>(`/grievances/${grievanceId}/assignments`)
+}
+
+export async function getGrievanceAssignmentHistoryApi(
+  grievanceId: string,
+  assignmentId: string
+): Promise<ApiResponse<GrievanceAssignmentHistory[]>> {
+  return apiFetch<ApiResponse<GrievanceAssignmentHistory[]>>(
+    `/grievances/${grievanceId}/assignments/${assignmentId}/history`
+  )
+}
+
 
 // --- OFFICER API ENDPOINTS ---
 
@@ -145,12 +162,54 @@ export async function getOfficerGrievanceByIdApi(id: string): Promise<ApiRespons
 export async function updateOfficerGrievanceStatusApi(
   id: string,
   status: string,
-  remarks?: string
+  remarks?: string,
+  resolution_description?: string
 ): Promise<ApiResponse<Grievance>> {
   return apiFetch<ApiResponse<Grievance>>(`/officer/grievances/${id}/status`, {
     method: "PATCH",
-    body: JSON.stringify({ status, remarks }),
+    body: JSON.stringify({ status, remarks, resolution_description }),
   })
+}
+
+export async function getOfficerAssignmentsApi(filters?: {
+  status?: string
+  priority?: string
+}): Promise<ApiResponse<DepartmentAssignment[]>> {
+  const params = new URLSearchParams()
+  if (filters?.status) params.append("status", filters.status)
+  if (filters?.priority) params.append("priority", filters.priority)
+
+  const queryStr = params.toString() ? `?${params.toString()}` : ""
+  return apiFetch<ApiResponse<DepartmentAssignment[]>>(`/officer/assignments${queryStr}`)
+}
+
+export async function getOfficerAssignmentByIdApi(
+  assignmentId: string
+): Promise<ApiResponse<DepartmentAssignment>> {
+  return apiFetch<ApiResponse<DepartmentAssignment>>(`/officer/assignments/${assignmentId}`)
+}
+
+export async function updateOfficerAssignmentStatusApi(
+  assignmentId: string,
+  status: string,
+  remarks?: string,
+  resolution_description?: string
+): Promise<ApiResponse<{ updatedAssignment: DepartmentAssignment; grievance: Grievance }>> {
+  return apiFetch<ApiResponse<{ updatedAssignment: DepartmentAssignment; grievance: Grievance }>>(
+    `/officer/assignments/${assignmentId}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status, remarks, resolution_description }),
+    }
+  )
+}
+
+export async function getOfficerAssignmentHistoryApi(
+  assignmentId: string
+): Promise<ApiResponse<GrievanceAssignmentHistory[]>> {
+  return apiFetch<ApiResponse<GrievanceAssignmentHistory[]>>(
+    `/officer/assignments/${assignmentId}/history`
+  )
 }
 
 

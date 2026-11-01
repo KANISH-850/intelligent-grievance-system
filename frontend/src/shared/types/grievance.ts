@@ -5,6 +5,7 @@ export type Status =
   | "ASSIGNED"
   | "UNDER_REVIEW"
   | "IN_PROGRESS"
+  | "PARTIALLY_RESOLVED"
   | "RESOLVED"
   | "REJECTED"
 
@@ -22,6 +23,24 @@ export interface GrievanceStatusHistory {
   remarks: string | null
   changed_by?: string
   created_at: string
+  user?: {
+    id: string
+    name: string
+    role: string
+  }
+}
+
+export interface GrievanceAssignmentHistory {
+  id: string
+  assignment_id: string
+  grievance_id: string
+  department_id: string
+  previous_status?: Status | null
+  status: Status
+  remarks?: string | null
+  changed_by: string
+  created_at: string
+  department?: Department
   user?: {
     id: string
     name: string
@@ -60,6 +79,7 @@ export interface Grievance {
   human_corrected_at?: string | null
   department?: Department
   assignments?: DepartmentAssignment[]
+  officer_assignment?: DepartmentAssignment | null
   user?: {
     id: string
     name: string
@@ -77,6 +97,10 @@ export interface DepartmentAssignment {
   routing_reason?: string | null
   assigned_officer_id?: string | null
   notes?: string | null
+  remarks?: string | null
+  resolution_description?: string | null
+  started_at?: string | null
+  resolved_at?: string | null
   created_at: string
   updated_at: string
   department?: Department
@@ -85,6 +109,7 @@ export interface DepartmentAssignment {
     name: string
     email: string
   } | null
+  history?: GrievanceAssignmentHistory[]
 }
 
 export interface GrievanceImage {
