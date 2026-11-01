@@ -93,9 +93,19 @@ class ChatbotService:
         grievance_detail: Optional[ChatbotGrievanceDetail] = None
         explanation_terms: List[str] = []
 
-        # Contextual recall from session memory if explicit pronouns are used without new GRV number
+        # Contextual recall from session memory if explicit pronouns/follow-ups are used without new GRV number
         if not matched_grv_number and session_ctx.get("last_grievance_number"):
-            if any(kw in msg_lower for kw in ["it", "this complaint", "the complaint", "when was it", "why classified"]):
+            contextual_triggers = [
+                "it", "this", "that", "the complaint", "this complaint", "my complaint",
+                "the grievance", "this grievance", "when was it", "why classified",
+                "handling this", "handling it", "who handles this", "who is handling",
+                "which department is handling", "status of this", "what department"
+            ]
+            has_pronoun = bool(re.search(r'\b(it|this|that|complaint|grievance)\b', msg_lower))
+            has_followup = any(kw in msg_lower for kw in contextual_triggers) or (
+                has_pronoun and any(kw in msg_lower for kw in ["department", "handling", "status", "who", "when", "why", "where", "handler"])
+            )
+            if has_followup:
                 matched_grv_number = session_ctx.get("last_grievance_number")
 
         # --- INTENT CLASSIFICATION ENGINE ---
@@ -110,98 +120,13 @@ class ChatbotService:
                 "explain department routing, guide you through filing a complaint, or answer process questions."
             )
 
-        # 2. PRIORITY INFORMATION INTENT
-        elif any(kw in msg_lower for kw in ["priority", "critical", "urgency", "severity", "how priority"]):
-            intent = "PRIORITY_INFORMATION"
-            intent_confidence = 0.90
-            response_text = (
-                "Grievances are assigned one of 4 priority levels:\n"
-                "• **CRITICAL:** Life-threatening emergencies, fire, gas leaks, hospital ICU failures, toxic leaks.\n"
-                "• **HIGH:** Severe infrastructure damage, major water/power outages, broken roads.\n"
-                "• **MEDIUM:** Routine service disruptions, regular billing inquiries, unannounced outages.\n"
-                "• **LOW:** Non-urgent requests, certificate updates, general feedback."
-            )
-
-        # 3. PROCESS INFORMATION INTENT
-        elif any(kw in msg_lower for kw in ["process", "workflow", "how it works", "how system work", "how does this system work", "architecture", "what happens after"]):
-            intent = "PROCESS_INFORMATION"
-            intent_confidence = 0.92
-            response_text = (
-                "The 9-step automated grievance workflow is:\n"
-                "1. Citizen Submits Grievance\n"
-                "2. Language Detection\n"
-                "3. Text Preprocessing\n"
-                "4. AI Category Classification (TF-IDF + Logistic Regression)\n"
-                "5. Priority Prediction & Urgency Analysis\n"
-                "6. Department Routing & Database Dispatch\n"
-                "7. Department Officer Review\n"
-                "8. Status Updates (Submitted → In Progress → Resolved/Rejected)\n"
-                "9. In-App Citizen Notifications"
-            )
-
-        # 4. TRACKING GUIDANCE INTENT
-        elif any(kw in msg_lower for kw in ["tracking guidance", "where to track", "how to track", "tracking id", "number format"]):
-            intent = "TRACKING_GUIDANCE"
-            intent_confidence = 0.90
-            response_text = (
-                "Every submitted grievance receives a tracking reference number formatted as `GRV-YYYY-XXXXXX` (e.g., `GRV-2026-000001`).\n"
-                "You can type your reference number directly in this chat or visit 'My Grievances' to track real-time progress."
-            )
-
-        # 5. SUBMIT GRIEVANCE GUIDANCE INTENT
-        elif any(kw in msg_lower for kw in ["how can i submit", "how do i submit", "how to submit", "how to file", "submit a complaint", "file a complaint", "lodge a complaint", "register a complaint"]):
-            intent = "SUBMIT_GRIEVANCE_GUIDANCE"
-            intent_confidence = 0.92
-            response_text = (
-                "To submit a new public grievance:\n"
-                "1. Go to 'Submit Grievance' in the portal sidebar.\n"
-                "2. Type your grievance in any supported language (English, Hindi, Tamil, Telugu, Kannada, Malayalam, etc.).\n"
-                "3. The system automatically processes language, predicts category & priority, and routes your complaint to the responsible Central/State Department.\n"
-                "4. You will receive a unique reference tracking ID (e.g., GRV-2026-000001)."
-            )
-
-        # 6. DEPARTMENT INFORMATION INTENT
-        elif any(kw in msg_lower for kw in ["department", "who handles", "ministry", "which dept", "water supply department", "electricity department"]):
-            intent = "DEPARTMENT_INFORMATION"
-            intent_confidence = 0.92
-            
-            matched_dept = None
-            for d_name, info in DEPARTMENT_KNOWLEDGE.items():
-                if d_name.lower() in msg_lower or info["code"].lower() in msg_lower:
-                    matched_dept = (d_name, info)
-                    break
-            
-            if matched_dept:
-                d_name, info = matched_dept
-                ex_str = ", ".join(info["examples"])
-                response_text = (
-                    f"The **{d_name} ({info['code']})** department handles: {info['description']}\n\n"
-                    f"**Typical Complaints:** {ex_str}"
-                )
-            else:
-                dept_names = ", ".join(DEPARTMENT_KNOWLEDGE.keys())
-                response_text = (
-                    f"The framework dispatches grievances to 9 government departments:\n{dept_names}.\n\n"
-                    "Ask about any specific department (e.g., 'What does Healthcare handle?') for more details."
-                )
-
-        # 7. HELP INTENT
-        elif msg_lower == "help" or any(kw in msg_lower for kw in ["help me", "what can you do", "options", "commands", "assistance"]):
-            intent = "HELP"
-            intent_confidence = 0.95
-            response_text = (
-                "Here is how I can assist you:\n"
-                "1. **Check Status:** Type `Status of GRV-2026-000001` or `My grievances`\n"
-                "2. **Filing Guidance:** Ask `How do I submit a complaint?`\n"
-                "3. **Departments:** Ask `Which department handles electricity?`\n"
-                "4. **Process:** Ask `How does the grievance workflow work?`\n"
-                "5. **Priority Info:** Ask `What is critical priority?`"
-            )
-
-        # 8. GRIEVANCE STATUS & DETAILS INTENT
-        elif matched_grv_number or any(kw in msg_lower for kw in ["my grievance", "my complaint", "list my", "show my", "status of my", "where is my grievance", "when was it", "all my grievances"]):
+        # 2. GRIEVANCE STATUS & DETAILS INTENT
+        elif matched_grv_number or (
+            any(kw in msg_lower for kw in ["my grievance", "my complaint", "list my", "show my", "status of my", "where is my grievance", "when was it", "all my grievances", "my complaints"])
+            and not any(kw in msg_lower for kw in ["priority", "submit", "how to submit", "process", "workflow", "how does"])
+        ):
             if matched_grv_number:
-                intent = "GRIEVANCE_DETAILS" if any(kw in msg_lower for kw in ["detail", "why", "when", "submitted"]) else "GRIEVANCE_STATUS"
+                intent = "GRIEVANCE_DETAILS" if any(kw in msg_lower for kw in ["detail", "why", "when", "submitted", "department", "who handles", "who is handling", "which dept", "which department", "handler", "assigned"]) else "GRIEVANCE_STATUS"
                 intent_confidence = 0.95
 
                 found_grievance = None
@@ -234,7 +159,12 @@ class ChatbotService:
                     # Update session memory
                     session_ctx["last_grievance_number"] = grievance_detail.grievance_number
 
-                    if any(kw in msg_lower for kw in ["why", "explain", "how category", "classified"]):
+                    if any(kw in msg_lower for kw in ["department", "who handles", "who is handling", "which dept", "which department", "handler", "assigned"]):
+                        response_text = (
+                            f"Your grievance {grievance_detail.grievance_number} is assigned to the **{dept_name}** department. "
+                            f"Current status: '{status}' (Category: {category})."
+                        )
+                    elif any(kw in msg_lower for kw in ["why", "explain", "how category", "classified"]):
                         term_str = ", ".join([f"'{t}'" for t in (explanation_terms or ["category keywords"])])
                         response_text = (
                             f"Your grievance {grievance_detail.grievance_number} was classified as {category} "
@@ -270,10 +200,101 @@ class ChatbotService:
                         g_status = g.get("status")
                         g_cat = g.get("category")
                         items.append(f"• {g_num} [{g_cat}] - {g_status}")
-                    
+
+                    if user_grievances[0].get("grievance_number"):
+                        session_ctx["last_grievance_number"] = user_grievances[0].get("grievance_number")
+
                     response_text = f"You have {count} registered grievance(s):\n" + "\n".join(items)
                     if count > 5:
                         response_text += f"\n...and {count - 5} more. View all under 'My Grievances'."
+
+        # 3. PRIORITY INFORMATION INTENT
+        elif any(kw in msg_lower for kw in ["priority", "critical", "urgency", "severity", "how priority"]):
+            intent = "PRIORITY_INFORMATION"
+            intent_confidence = 0.90
+            response_text = (
+                "Grievances are assigned one of 4 priority levels:\n"
+                "• **CRITICAL:** Life-threatening emergencies, fire, gas leaks, hospital ICU failures, toxic leaks.\n"
+                "• **HIGH:** Severe infrastructure damage, major water/power outages, broken roads.\n"
+                "• **MEDIUM:** Routine service disruptions, regular billing inquiries, unannounced outages.\n"
+                "• **LOW:** Non-urgent requests, certificate updates, general feedback."
+            )
+
+        # 4. PROCESS INFORMATION INTENT
+        elif any(kw in msg_lower for kw in ["process", "workflow", "how it works", "how system work", "how does this system work", "architecture", "what happens after"]):
+            intent = "PROCESS_INFORMATION"
+            intent_confidence = 0.92
+            response_text = (
+                "The 9-step automated grievance workflow is:\n"
+                "1. Citizen Submits Grievance\n"
+                "2. Language Detection\n"
+                "3. Text Preprocessing\n"
+                "4. AI Category Classification (TF-IDF + Logistic Regression)\n"
+                "5. Priority Prediction & Urgency Analysis\n"
+                "6. Department Routing & Database Dispatch\n"
+                "7. Department Officer Review\n"
+                "8. Status Updates (Submitted → In Progress → Resolved/Rejected)\n"
+                "9. In-App Citizen Notifications"
+            )
+
+        # 5. TRACKING GUIDANCE INTENT
+        elif any(kw in msg_lower for kw in ["tracking guidance", "where to track", "how to track", "tracking id", "number format"]):
+            intent = "TRACKING_GUIDANCE"
+            intent_confidence = 0.90
+            response_text = (
+                "Every submitted grievance receives a tracking reference number formatted as `GRV-YYYY-XXXXXX` (e.g., `GRV-2026-000001`).\n"
+                "You can type your reference number directly in this chat or visit 'My Grievances' to track real-time progress."
+            )
+
+        # 6. SUBMIT GRIEVANCE GUIDANCE INTENT
+        elif any(kw in msg_lower for kw in ["how can i submit", "how do i submit", "how to submit", "how to file", "submit a complaint", "file a complaint", "lodge a complaint", "register a complaint"]):
+            intent = "SUBMIT_GRIEVANCE_GUIDANCE"
+            intent_confidence = 0.92
+            response_text = (
+                "To submit a new public grievance:\n"
+                "1. Go to 'Submit Grievance' in the portal sidebar.\n"
+                "2. Type your grievance in any supported language (English, Hindi, Tamil, Telugu, Kannada, Malayalam, etc.).\n"
+                "3. The system automatically processes language, predicts category & priority, and routes your complaint to the responsible Central/State Department.\n"
+                "4. You will receive a unique reference tracking ID (e.g., GRV-2026-000001)."
+            )
+
+        # 7. DEPARTMENT INFORMATION INTENT (General department FAQs)
+        elif any(kw in msg_lower for kw in ["department", "who handles", "ministry", "which dept", "water supply department", "electricity department"]):
+            intent = "DEPARTMENT_INFORMATION"
+            intent_confidence = 0.92
+
+            matched_dept = None
+            for d_name, info in DEPARTMENT_KNOWLEDGE.items():
+                if d_name.lower() in msg_lower or info["code"].lower() in msg_lower:
+                    matched_dept = (d_name, info)
+                    break
+
+            if matched_dept:
+                d_name, info = matched_dept
+                ex_str = ", ".join(info["examples"])
+                response_text = (
+                    f"The **{d_name} ({info['code']})** department handles: {info['description']}\n\n"
+                    f"**Typical Complaints:** {ex_str}"
+                )
+            else:
+                dept_names = ", ".join(DEPARTMENT_KNOWLEDGE.keys())
+                response_text = (
+                    f"The framework dispatches grievances to 9 government departments:\n{dept_names}.\n\n"
+                    "Ask about any specific department (e.g., 'What does Healthcare handle?') for more details."
+                )
+
+        # 8. HELP INTENT
+        elif msg_lower == "help" or any(kw in msg_lower for kw in ["help me", "what can you do", "options", "commands", "assistance"]):
+            intent = "HELP"
+            intent_confidence = 0.95
+            response_text = (
+                "Here is how I can assist you:\n"
+                "1. **Check Status:** Type `Status of GRV-2026-000001` or `My grievances`\n"
+                "2. **Filing Guidance:** Ask `How do I submit a complaint?`\n"
+                "3. **Departments:** Ask `Which department handles electricity?`\n"
+                "4. **Process:** Ask `How does the grievance workflow work?`\n"
+                "5. **Priority Info:** Ask `What is critical priority?`"
+            )
 
         # 9. UNKNOWN / OUT-OF-DOMAIN FALLBACK
         else:
@@ -290,7 +311,7 @@ class ChatbotService:
             message=response_text,
             language=detected_language,
             intent=intent,
-            confidence=intent_confidence,
+            confidence=None,  # Heuristic intent matching does not produce calibrated probabilities
             grievance_number=matched_grv_number,
             grievance=grievance_detail,
             session_context=session_ctx,
