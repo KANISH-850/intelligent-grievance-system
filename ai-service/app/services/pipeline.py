@@ -9,6 +9,7 @@ from app.services.ml.translation_provider import translation_provider
 from app.services.ml.classifier import ml_grievance_classifier
 from app.services.ml.predictor import ml_priority_predictor
 from app.services.department_router import department_router_service
+from app.services.multi_issue_extractor import multi_issue_extractor
 
 logger = logging.getLogger("ai_service.pipeline")
 
@@ -69,59 +70,40 @@ class AnalysisPipeline:
             priority = "MEDIUM"
             priority_confidence = None
 
-        # 6. Multi-Department Routing
-        # Primary department
-        primary_dept = department_router_service.route_department(category)
-        
-        # Build multi-department recommendations list
-        recommended_departments = []
-        assigned_dept_names = set()
-        
-        # 1. Primary department assignment
-        primary_reason = f"Primary category '{category}' identified via {classification_method}"
-        if explanation.get("top_terms"):
-            primary_reason += f" (key terms: {', '.join(explanation['top_terms'])})"
-        recommended_departments.append({
-            "department_name": primary_dept,
-            "category": category,
-            "confidence": category_confidence,
-            "reason": primary_reason,
-            "source": "text",
-        })
-        assigned_dept_names.add(primary_dept)
+        # 6. Multi-Issue Extraction and Multi-Department Routing
+        all_probs = class_result.get("all_probabilities", {}) if translation_valid else {}
+        detected_issues = []
 
-        # 2. Secondary department detection from model class probabilities & keywords
         if translation_valid:
-            # Check class probabilities if ML model was used
-            all_probs = class_result.get("all_probabilities", {})
-            for cat, prob in all_probs.items():
-                if cat != category and prob >= 0.25:
-                    dept = department_router_service.route_department(cat)
-                    if dept not in assigned_dept_names and dept != "Other":
-                        recommended_departments.append({
-                            "department_name": dept,
-                            "category": cat,
-                            "confidence": prob,
-                            "reason": f"Secondary issue '{cat}' detected with calibrated probability score {prob:.2f}",
-                            "source": "text",
-                        })
-                        assigned_dept_names.add(dept)
+            detected_issues = multi_issue_extractor.extract_issues(classification_text)
+            recommended_departments = multi_issue_extractor.decompose_into_departments(
+                text=classification_text,
+                primary_category=category,
+                primary_confidence=category_confidence,
+                ml_probabilities=all_probs,
+            )
+        else:
+            primary_dept = department_router_service.route_department(category)
+            recommended_departments = [{
+                "department_name": primary_dept,
+                "category": category,
+                "confidence": category_confidence,
+                "reason": "Translation unavailable, routed for administrative human review",
+                "issues": [],
+                "source": "text",
+            }]
 
-            # Check secondary keyword matches
-            from app.services.classifier import grievance_classifier_service
-            kw_scores = grievance_classifier_service.get_all_category_scores(classification_text)
-            for cat, match_count in kw_scores.items():
-                if cat != category and match_count >= 1:
-                    dept = department_router_service.route_department(cat)
-                    if dept not in assigned_dept_names and dept != "Other":
-                        recommended_departments.append({
-                            "department_name": dept,
-                            "category": cat,
-                            "confidence": round(min(0.50 + 0.15 * match_count, 0.85), 2),
-                            "reason": f"Secondary issue '{cat}' detected from keyword evidence in description",
-                            "source": "text",
-                        })
-                        assigned_dept_names.add(dept)
+        if recommended_departments:
+            primary_dept = recommended_departments[0]["department_name"]
+            # Align category with primary detected issue if ML category was 'Other' or uncertain
+            if category == "Other" and recommended_departments[0]["category"] != "Other":
+                category = recommended_departments[0]["category"]
+                category_confidence = recommended_departments[0].get("confidence", 0.85)
+                ai_review_required = False
+            elif not detected_issues and category == "Other":
+                ai_review_required = True
+        else:
+            primary_dept = department_router_service.route_department(category)
 
         elapsed_ms = (time.perf_counter() - start_time) * 1000
 
@@ -136,6 +118,7 @@ class AnalysisPipeline:
             priority_confidence=priority_confidence,
             department=primary_dept,
             departments=recommended_departments,
+            detected_issues=detected_issues,
             processing_time_ms=round(elapsed_ms, 2),
             model_used=model_used,
             classification_method=classification_method,

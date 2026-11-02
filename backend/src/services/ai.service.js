@@ -1,25 +1,70 @@
 const { AI_SERVICE_URL } = require("../config/env");
 
 const FALLBACK_CATEGORIES = {
-  "Water Supply": ["water", "drinking water", "water supply", "pipeline", "tap", "sewage", "drainage", "borewell", "tanker"],
-  Electricity: ["electricity", "power", "voltage", "transformer", "wire", "wires", "electric", "outage", "blackout", "streetlight", "streetlights", "street light"],
-  "Roads and Transport": ["road", "roads", "pothole", "potholes", "traffic", "bus", "highway", "bridge", "footpath", "transport"],
-  Healthcare: ["hospital", "doctor", "medicine", "health", "clinic", "ambulance", "pharmacy", "fever"],
-  Education: ["school", "teacher", "college", "student", "education", "classroom", "textbook"],
-  Sanitation: ["garbage", "waste", "cleaning", "trash", "unsanitary", "stink", "mosquito", "dustbin"],
-  "Municipal Services": ["park", "community hall", "birth certificate", "death certificate", "playground", "encroachment"],
-  Revenue: ["tax", "property tax", "land record", "patta", "revenue", "income certificate", "caste certificate", "stamp duty"],
+  "Water Supply": [
+    /\b(?:water\s+(?:is\s+)?leak\w*|leak\w*\s+(?:from\s+(?:a\s+)?)?pipe\w*|pipe\w*\s+(?:is\s+)?leak\w*|pipeline\s+(?:is\s+)?leak\w*|burst\s+pipe\w*|pipe\w*\s+burst|burst\s+pipeline|pipeline\s+burst)\b/i,
+    /\b(?:no\s+water|water\s+cut|water\s+supply\s+(?:disruption|cut|stopped)|without\s+water)\b/i,
+    /\b(?:contaminated\s+water|dirty\s+water|yellow\s+water|water\s+smell\w*|water\s+contamination|foul\s+drinking\s+water)\b/i,
+    /\b(?:water\s+tanker|tanker\s+not\s+arrived|tanker\s+delayed)\b/i,
+    /\b(?:low\s+pressure\s+water|low\s+water\s+pressure|water\s+pressure\s+low)\b/i,
+    /\b(?:borewell\s+(?:dry|broken|failed)|damaged\s+handpump)\b/i,
+    /\b(?:water\s+supply|drinking\s+water|water\s+tap)\b/i,
+  ],
+  Electricity: [
+    /\b(?:streetlights?\s+(?:is\s+|are\s+)?not\s+working|damaged\s+streetlights?|broken\s+streetlights?|unlit\s+streetlights?|streetlight\s+failure)\b/i,
+    /\b(?:live\s+(?:electrical\s+)?wire|hanging\s+(?:electric|power)\s+wire|snapped\s+wire|exposed\s+wires?)\b/i,
+    /\b(?:transformer\s+(?:fire|burnt|blast|smoking|burned|failure))\b/i,
+    /\b(?:power\s+cut|power\s+outage|frequent\s+power\s+cuts?|blackout|no\s+power|no\s+electricity)\b/i,
+    /\b(?:voltage\s+fluctuation|high\s+voltage|low\s+voltage)\b/i,
+    /\b(?:electricity\s+bill|meter\s+running\s+fast|excessive\s+power\s+bill)\b/i,
+  ],
+  "Roads and Transport": [
+    /\b(?:pothole|potholes|deep\s+pothole|large\s+pothole|craters?\s+on\s+road)\b/i,
+    /\b(?:damaged\s+road(?:\s+surfaces?)?|broken\s+road|road\s+damage\w*|damaged\s+pavement|asphalt\s+damage|road\s+cave[- ]?in|broken\s+asphalt)\b/i,
+    /\b(?:bridge\s+joint|damaged\s+bridge|bridge\s+vibrat\w+)\b/i,
+    /\b(?:speed\s+breaker\s+(?:needed|broken|damaged|unmarked))\b/i,
+    /\b(?:traffic\s+light\s+signal|traffic\s+signal\s+broken|signal\s+not\s+working|traffic\s+gridlock)\b/i,
+    /\b(?:bus\s+route\s+\d+|bus\s+cancelled|bus\s+driver\s+rash|bus\s+service)\b/i,
+  ],
+  Healthcare: [
+    /\b(?:primary\s+health\s+center|phc|government\s+hospital|district\s+hospital|hospital\s+ward)\b/i,
+    /\b(?:doctor\s+absent|no\s+doctor|doctor\s+not\s+available|casualty\s+doctor)\b/i,
+    /\b(?:emergency\s+medicines?|rabies\s+vaccine|lack\s+of\s+medicines?|no\s+medicines?)\b/i,
+    /\b(?:ambulance\s+(?:108|not\s+arrived|delayed|helpline))\b/i,
+  ],
+  Education: [
+    /\b(?:school\s+building|classroom\s+ceiling|falling\s+plaster|dilapidated\s+school)\b/i,
+    /\b(?:toilets?\s+for\s+girl\s+students|school\s+toilet|no\s+functional\s+toilet\s+in\s+school)\b/i,
+    /\b(?:stale\s+mid\s+day\s+meal|midday\s+meal\s+(?:poisoning|infection|unhygienic))\b/i,
+    /\b(?:teacher\s+post\s+vacant|no\s+teacher|shortage\s+of\s+teachers?)\b/i,
+  ],
+  Sanitation: [
+    /\b(?:garbage\s+(?:is\s+)?accumulat\w+|garbage\s+accumulation|accumulating\s+garbage|garbage\s+(?:is\s+)?dump\w*|garbage\s+pile|waste\s+dump\w*|overflowing\s+(?:dustbin|bin|garbage)|uncollected\s+garbage|garbage\s+not\s+collected)\b/i,
+    /\b(?:open\s+sewage|sewage\s+overflow\w*|overflowing\s+sewage|sewer\s+overflow\w*|choked\s+drain\w*|blocked\s+drainage|drainage\s+overflow\w*|drain\s+overflow\w*)\b/i,
+    /\b(?:public\s+toilet\s+(?:filthy|dirty|broken)|toilet\s+clean\w*\s+issue)\b/i,
+    /\b(?:dead\s+(?:animal|dog|cow|cat)|carcass)\b/i,
+    /\b(?:terrible\s+stench|stinking\s+badly|foul\s+odor|foul\s+smell\s+due\s+to\s+(?:garbage|waste))\b/i,
+  ],
+  "Municipal Services": [
+    /\b(?:stray\s+dogs?|dog\s+pack|dog\s+bite|rabid\s+dog|dog\s+menace)\b/i,
+    /\b(?:birth\s+certificate|death\s+certificate|delay\s+in\s+certificate)\b/i,
+    /\b(?:property\s+tax\s+portal|property\s+tax\s+payment|property\s+tax\s+bill)\b/i,
+    /\b(?:public\s+park|park\s+bench|bus\s+shelter\s+(?:vandalized|broken)|guardrail\s+damaged|dangerous\s+tree\s+branch)\b/i,
+  ],
+  Revenue: [
+    /\b(?:patwari|patwari\s+demanding\s+bribe|land\s+mutation|khatauni)\b/i,
+    /\b(?:land\s+survey|survey\s+measurement|boundary\s+dispute|revenue\s+inspector)\b/i,
+    /\b(?:caste\s+and\s+income\s+certificate|income\s+certificate|caste\s+certificate)\b/i,
+    /\b(?:government\s+revenue\s+land|illegal\s+land\s+grabbing|land\s+encroachment)\b/i,
+  ],
 };
 
 const classifyFallbackCategory = (text) => {
   let bestCategory = "Other";
   let bestMatchCount = 0;
 
-  for (const [category, keywords] of Object.entries(FALLBACK_CATEGORIES)) {
-    const matchCount = keywords.filter((keyword) => {
-      const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      return new RegExp(`(?:^|\\W)${escaped}(?:$|\\W)`, "i").test(text);
-    }).length;
+  for (const [category, patterns] of Object.entries(FALLBACK_CATEGORIES)) {
+    const matchCount = patterns.filter((pattern) => pattern.test(text)).length;
     if (matchCount > bestMatchCount) {
       bestCategory = category;
       bestMatchCount = matchCount;
@@ -101,19 +146,16 @@ const createFallbackAnalysis = (text) => {
       });
       seen.add(category);
 
-      // Check all other categories for keywords
-      for (const [catName, keywords] of Object.entries(FALLBACK_CATEGORIES)) {
+      // Check all other categories for defect patterns
+      for (const [catName, patterns] of Object.entries(FALLBACK_CATEGORIES)) {
         if (!seen.has(catName)) {
-          const match = keywords.some((kw) => {
-            const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-            return new RegExp(`(?:^|\\W)${escaped}(?:$|\\W)`, "i").test(text);
-          });
+          const match = patterns.some((pattern) => pattern.test(text));
           if (match) {
             depts.push({
               department_name: catName,
               category: catName,
               confidence: null,
-              reason: `Secondary routing to ${catName} from keyword detection`,
+              reason: `Secondary routing to ${catName} from defect pattern detection`,
               source: "text",
             });
             seen.add(catName);

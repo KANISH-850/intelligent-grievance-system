@@ -292,10 +292,27 @@ export function SubmitGrievance() {
               <span className="font-semibold text-foreground">{submittedResult.category}</span>
             </div>
             <div>
-              <span className="text-xs text-muted-foreground font-medium block mb-1">Assigned Department</span>
-              <span className="font-semibold text-foreground">
-                {submittedResult.department?.name || submittedResult.category}
+              <span className="text-xs text-muted-foreground font-medium block mb-1">
+                {submittedResult.assignments && submittedResult.assignments.length > 1
+                  ? `Assigned Departments (${submittedResult.assignments.length})`
+                  : "Assigned Department"}
               </span>
+              {submittedResult.assignments && submittedResult.assignments.length > 1 ? (
+                <div className="flex flex-wrap gap-1.5 mt-1">
+                  {submittedResult.assignments.map((assign: any, idx: number) => (
+                    <span
+                      key={assign.id || idx}
+                      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-primary/10 text-primary border border-primary/20"
+                    >
+                      {assign.department?.name || assign.department_name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="font-semibold text-foreground">
+                  {submittedResult.department?.name || submittedResult.category}
+                </span>
+              )}
             </div>
             <div>
               <span className="text-xs text-muted-foreground font-medium block mb-1">Priority Level</span>

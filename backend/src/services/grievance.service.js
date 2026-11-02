@@ -410,7 +410,7 @@ const submitGrievance = async ({ userId, text, images = [] }) => {
       ...grievance,
       assignments: createdAssignments,
     };
-  });
+  }, { maxWait: 10000, timeout: 25000 });
       break;
     } catch (err) {
       const isUniqueError =

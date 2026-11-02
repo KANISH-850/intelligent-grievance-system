@@ -132,6 +132,13 @@ class GrievanceResponse(BaseModel):
             {"department_name": "Roads and Transport", "category": "Roads and Transport", "confidence": 0.88, "reason": "Mentions large pothole", "source": "text"}
         ]}
     )
+    detected_issues: Optional[list] = Field(
+        default_factory=list,
+        description="All individual detected civic issues with categories and evidence spans",
+        json_schema_extra={"example": [
+            {"issue_name": "Potholes on road", "category": "Roads and Transport", "department": "Roads and Transport", "matched_phrase": "potholes"}
+        ]}
+    )
 
 
 class DepartmentRecommendation(BaseModel):

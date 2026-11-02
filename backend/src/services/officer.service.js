@@ -500,7 +500,7 @@ const updateDepartmentAssignmentStatus = async (
       updatedAssignment,
       grievance: updatedParent,
     };
-  });
+  }, { maxWait: 10000, timeout: 25000 });
 
   return updatedGrievance;
 };
@@ -579,7 +579,7 @@ const updateOfficerGrievanceStatus = async (id, officerUser, { status, remarks, 
     });
 
     return updated;
-  });
+  }, { maxWait: 10000, timeout: 25000 });
 };
 
 /**
