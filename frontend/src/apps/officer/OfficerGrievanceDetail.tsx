@@ -270,11 +270,6 @@ export function OfficerGrievanceDetail() {
               </div>
             )}
             <PriorityBadge priority={grievance.priority} />
-            {grievance.ai_review_required && (
-              <span className="px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-300 rounded-full animate-pulse">
-                ⚠ AI Review Required
-              </span>
-            )}
           </div>
           <p className="text-xs text-muted-foreground">
             Submitted {new Date(grievance.created_at).toLocaleString("en-IN")}

@@ -113,7 +113,7 @@ const submitGrievance = async ({ userId, text, images = [] }) => {
         confidence_level: typeof primaryCivic.confidence === "number"
           ? (primaryCivic.confidence >= 0.75 ? "HIGH" : primaryCivic.confidence >= 0.50 ? "MEDIUM" : "LOW")
           : "LOW",
-        ai_review_required: true, // Vision models do not return calibrated probabilities; require human officer verification
+        ai_review_required: Boolean(primaryCivic.human_review_required),
 
         classification_method: "computer_vision_multimodal",
         explanation_terms: primaryCivic.visual_observations || [],

@@ -182,14 +182,13 @@ export function OfficerGrievanceList() {
                   <th>Status</th>
                   <th>Language</th>
                   <th>AI Confidence</th>
-                  <th>AI Review</th>
                   <th>Date</th>
                   <th className="text-right pr-4">Action</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((g) => (
-                  <tr key={g.id} className={g.ai_review_required ? "bg-amber-50/40" : ""}>
+                  <tr key={g.id}>
                     <td>
                       <span className="font-mono font-bold text-primary text-xs">{g.grievance_number}</span>
                       {g.assignments && g.assignments.length > 1 && (
@@ -228,15 +227,6 @@ export function OfficerGrievanceList() {
                         <span className="font-mono">{(g.ai_confidence * 100).toFixed(0)}%</span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
-                      )}
-                    </td>
-                    <td>
-                      {g.ai_review_required ? (
-                        <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap">
-                          ⚠ Required
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="text-xs text-muted-foreground font-mono whitespace-nowrap">

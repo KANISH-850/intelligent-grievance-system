@@ -33,7 +33,6 @@ export function OfficerDashboard() {
   const pendingCount  = grievances.filter((g) => ["SUBMITTED","ASSIGNED","UNDER_REVIEW","IN_PROGRESS"].includes(g.status)).length
   const criticalCount = grievances.filter((g) => g.priority === "CRITICAL").length
   const resolvedCount = grievances.filter((g) => g.status === "RESOLVED").length
-  const reviewRequired = grievances.filter((g) => g.ai_review_required).length
 
   const metrics = [
     { label: "Total Departmental", value: totalCount, accent: "text-foreground",
@@ -69,22 +68,6 @@ export function OfficerDashboard() {
         </Link>
       </div>
 
-      {/* AI Review Required alert */}
-      {!isLoading && reviewRequired > 0 && (
-        <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm">
-          <svg className="w-5 h-5 text-amber-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <span className="text-amber-800 font-medium">
-            <strong>{reviewRequired}</strong> grievance{reviewRequired > 1 ? "s require" : " requires"} manual AI classification review.
-          </span>
-          <Link to="/officer/grievances" className="ml-auto">
-            <Button variant="outline" size="sm" className="text-xs border-amber-300 text-amber-800 hover:bg-amber-100">
-              Review Now
-            </Button>
-          </Link>
-        </div>
-      )}
 
       {/* Metrics */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -145,29 +128,19 @@ export function OfficerDashboard() {
                     <th>Category</th>
                     <th>Priority</th>
                     <th>Status</th>
-                    <th>AI Review</th>
                     <th>Date</th>
                     <th className="text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {grievances.slice(0, 8).map((g) => (
-                    <tr key={g.id} className={g.ai_review_required ? "bg-amber-50/50" : ""}>
+                    <tr key={g.id}>
                       <td>
                         <span className="font-mono font-bold text-primary text-xs">{g.grievance_number}</span>
                       </td>
                       <td className="text-xs font-medium max-w-[130px] truncate">{g.category}</td>
                       <td><PriorityBadge priority={g.priority} /></td>
                       <td><StatusBadge status={g.status} /></td>
-                      <td>
-                        {g.ai_review_required ? (
-                          <span className="px-1.5 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800 border border-amber-200">
-                            Required
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </td>
                       <td className="text-xs text-muted-foreground font-mono">
                         {new Date(g.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                       </td>
