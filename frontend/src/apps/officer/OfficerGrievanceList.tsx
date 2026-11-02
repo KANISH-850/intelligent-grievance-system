@@ -181,7 +181,6 @@ export function OfficerGrievanceList() {
                   <th>Priority</th>
                   <th>Status</th>
                   <th>Language</th>
-                  <th>AI Confidence</th>
                   <th>Date</th>
                   <th className="text-right pr-4">Action</th>
                 </tr>
@@ -220,13 +219,6 @@ export function OfficerGrievanceList() {
                       <span>{g.detected_language || "English"}</span>
                       {g.translation_status === "translated" && (
                         <span className="ml-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1 py-0.2 rounded">EN</span>
-                      )}
-                    </td>
-                    <td className="text-xs">
-                      {g.ai_confidence !== null && g.ai_confidence !== undefined ? (
-                        <span className="font-mono">{(g.ai_confidence * 100).toFixed(0)}%</span>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="text-xs text-muted-foreground font-mono whitespace-nowrap">

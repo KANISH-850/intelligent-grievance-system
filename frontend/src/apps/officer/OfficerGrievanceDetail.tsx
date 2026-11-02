@@ -515,22 +515,6 @@ export function OfficerGrievanceDetail() {
                 <dd className="font-medium">{grievance.detected_language || "English"}</dd>
               </div>
 
-              {grievance.ai_confidence !== null && grievance.ai_confidence !== undefined && (
-                <div className="border-b pb-3">
-                  <dt className="text-xs text-muted-foreground font-medium mb-1">AI Confidence</dt>
-                  <dd className="flex items-center gap-2">
-                    <span className="font-mono font-bold">{(grievance.ai_confidence * 100).toFixed(0)}%</span>
-                    {grievance.ai_confidence_level && (
-                      <span className={`px-1.5 py-0.5 text-xs font-bold rounded ${
-                        grievance.ai_confidence_level === "HIGH" ? "bg-emerald-100 text-emerald-800"
-                        : grievance.ai_confidence_level === "MEDIUM" ? "bg-amber-100 text-amber-800"
-                        : "bg-rose-100 text-rose-800"
-                      }`}>{grievance.ai_confidence_level}</span>
-                    )}
-                  </dd>
-                </div>
-              )}
-
               {grievance.user && (
                 <div className="border-b pb-3">
                   <dt className="text-xs text-muted-foreground font-medium mb-1">Complainant</dt>
