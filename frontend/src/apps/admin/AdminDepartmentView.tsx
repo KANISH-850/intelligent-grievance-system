@@ -8,14 +8,10 @@ import { Button } from "@/shared/ui/button"
 
 const DEPARTMENTS_LIST = [
   { code: "WS", name: "Water Supply" },
-  { code: "ELEC", name: "Electricity" },
   { code: "RT", name: "Roads and Transport" },
-  { code: "HC", name: "Healthcare" },
-  { code: "EDU", name: "Education" },
   { code: "SAN", name: "Sanitation" },
+  { code: "ELEC", name: "Electricity" },
   { code: "MS", name: "Municipal Services" },
-  { code: "REV", name: "Revenue" },
-  { code: "OTH", name: "Other" },
 ]
 
 export function AdminDepartmentView() {

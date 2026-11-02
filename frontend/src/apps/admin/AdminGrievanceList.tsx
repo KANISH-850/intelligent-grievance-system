@@ -9,14 +9,10 @@ import { Button } from "@/shared/ui/button"
 const KNOWN_DEPARTMENTS = [
   { code: "", name: "All Departments" },
   { code: "WS",   name: "Water Supply" },
-  { code: "ELEC", name: "Electricity" },
   { code: "RT",   name: "Roads & Transport" },
-  { code: "HC",   name: "Healthcare" },
-  { code: "EDU",  name: "Education" },
   { code: "SAN",  name: "Sanitation" },
+  { code: "ELEC", name: "Electricity" },
   { code: "MS",   name: "Municipal Services" },
-  { code: "REV",  name: "Revenue" },
-  { code: "OTH",  name: "Other" },
 ]
 
 export function AdminGrievanceList() {

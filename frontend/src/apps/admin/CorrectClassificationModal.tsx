@@ -11,13 +11,10 @@ interface CorrectClassificationModalProps {
 
 const CATEGORIES = [
   "Water Supply",
-  "Electricity",
   "Roads and Transport",
-  "Healthcare",
-  "Education",
   "Sanitation",
+  "Electricity",
   "Municipal Services",
-  "Revenue",
   "Other",
 ]
 
