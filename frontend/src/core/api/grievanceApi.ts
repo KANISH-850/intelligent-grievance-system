@@ -29,8 +29,13 @@ export interface PreSubmissionImageAnalysis {
   visual_observations?: string[]
   observations?: string[]
   confidence?: number | null
+  confidence_level?: string | null
+  predicted_class?: string | null
   human_review_required: boolean
+  review_reason?: string | null
   citizen_message?: string | null
+  model_name?: string | null
+  inference_latency_ms?: number | null
 }
 
 export interface TranslationPreviewData {

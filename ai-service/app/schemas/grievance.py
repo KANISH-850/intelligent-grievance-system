@@ -168,7 +168,10 @@ class ImageAnalysisResponse(BaseModel):
     visual_observations: list[str] = Field(default_factory=list)
     observations: list[str] = Field(default_factory=list)
     confidence: Optional[float] = None
+    confidence_level: Optional[str] = None
+    predicted_class: Optional[str] = None
     human_review_required: bool = True
+    review_reason: Optional[str] = None
     citizen_message: Optional[str] = None
     model_name: Optional[str] = "MobileNetV3-Small-Civic"
     model_version: Optional[str] = "1.0.0"

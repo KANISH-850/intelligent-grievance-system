@@ -299,8 +299,14 @@ const analyzeImageFromBase64 = async (image_base64, mimeType) => {
       visual_observations: visualObs,
       observations: visualObs,
       confidence: typeof result.confidence === "number" ? result.confidence : null,
+      confidence_level: result.confidence_level || (typeof result.confidence === "number" ? (result.confidence >= 0.70 ? "HIGH" : result.confidence >= 0.40 ? "MEDIUM" : "LOW") : "LOW"),
+      predicted_class: result.predicted_class || null,
       human_review_required: result.human_review_required !== false,
+      review_reason: result.review_reason || null,
       citizen_message: result.citizen_message || null,
+      model_name: result.model_name || "MobileNetV3-Small-Civic",
+      model_version: result.model_version || "1.0.0",
+      inference_latency_ms: typeof result.inference_latency_ms === "number" ? result.inference_latency_ms : null,
     };
   } catch (error) {
     console.warn("Image analysis unavailable:", error.message);
@@ -318,8 +324,14 @@ const analyzeImageFromBase64 = async (image_base64, mimeType) => {
       visual_observations: [],
       observations: [],
       confidence: null,
+      confidence_level: "LOW",
+      predicted_class: null,
       human_review_required: true,
+      review_reason: `AI vision service unavailable: ${error.message}`,
       citizen_message: "AI vision service is currently unavailable. Your image will be reviewed by an officer.",
+      model_name: "MobileNetV3-Small-Civic",
+      model_version: "1.0.0",
+      inference_latency_ms: null,
     };
   }
 };
@@ -345,8 +357,14 @@ const analyzeImage = async (filePath, mimeType) => {
       visual_observations: [],
       observations: [],
       confidence: null,
+      confidence_level: "LOW",
+      predicted_class: null,
       human_review_required: true,
+      review_reason: `Failed reading image file: ${error.message}`,
       citizen_message: "Failed to read image file on server.",
+      model_name: "MobileNetV3-Small-Civic",
+      model_version: "1.0.0",
+      inference_latency_ms: null,
     };
   }
 };

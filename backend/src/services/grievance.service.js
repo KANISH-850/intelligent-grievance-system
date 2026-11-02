@@ -117,17 +117,33 @@ const submitGrievance = async ({ userId, text, images = [] }) => {
 
         classification_method: "computer_vision_multimodal",
         explanation_terms: primaryCivic.visual_observations || [],
-        departments: [
-          {
-            department_name: primaryDept,
-            category: primaryCat,
-            confidence: primaryCivic.confidence || null,
-            reason: `Primary routing based on visual evidence: detected '${primaryCivic.detected_issue}'${
-              primaryCivic.visual_observations?.length ? ` (${primaryCivic.visual_observations.join(", ")})` : ""
-            }`,
-            source: "image",
-          },
-        ],
+        departments: (() => {
+          const deptList = [
+            {
+              department_name: primaryDept,
+              category: primaryCat,
+              confidence: primaryCivic.confidence || null,
+              reason: `Primary routing based on visual evidence: detected '${primaryCivic.detected_issue}'${
+                primaryCivic.predicted_class ? ` [${primaryCivic.predicted_class}]` : ""
+              }${primaryCivic.visual_observations?.length ? ` (${primaryCivic.visual_observations.join(", ")})` : ""}`,
+              source: "image",
+            },
+          ];
+          if (Array.isArray(primaryCivic.additional_departments)) {
+            for (const addDept of primaryCivic.additional_departments) {
+              if (addDept && addDept.toLowerCase() !== primaryDept.toLowerCase()) {
+                deptList.push({
+                  department_name: addDept,
+                  category: addDept,
+                  confidence: primaryCivic.confidence || null,
+                  reason: `Multi-department routing based on visual defect type: '${primaryCivic.detected_issue}'`,
+                  source: "image",
+                });
+              }
+            }
+          }
+          return deptList;
+        })(),
       };
     } else {
       // Vision provider was offline/unavailable for image-only submission
@@ -390,9 +406,9 @@ const submitGrievance = async ({ userId, text, images = [] }) => {
         await tx.grievanceImage.create({
           data: {
             grievance_id: grievance.id,
-            filename: file.originalname,
-            mime_type: file.mimetype,
-            size: file.size,
+            filename: file.originalname || file.filename || "image.jpg",
+            mime_type: file.mimetype || "image/jpeg",
+            size: file.size || 0,
             path: file.path,
             analysis_status: analysis.analysis_status || "unavailable",
             image_description: analysis.issue_description || analysis.image_description || null,

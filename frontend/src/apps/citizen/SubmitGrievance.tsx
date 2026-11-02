@@ -668,9 +668,16 @@ export function SubmitGrievance() {
                           </span>
                         )}
                         {p.status === "analyzed" && isCivic && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                            ✓ Civic Issue: {analysis?.detected_issue}
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              ✓ Civic Issue: {analysis?.detected_issue}
+                            </span>
+                            {typeof analysis?.confidence === "number" && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border">
+                                Conf: {Math.round(analysis.confidence * 100)}% ({analysis.confidence_level || "MED"})
+                              </span>
+                            )}
+                          </div>
                         )}
                         {p.status === "analyzed" && isUnrelated && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
@@ -678,9 +685,16 @@ export function SubmitGrievance() {
                           </span>
                         )}
                         {p.status === "analyzed" && isUncertain && !isUnrelated && (
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                            ⚠ Image Indistinct
-                          </span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                              ⚠ Ambiguous · Officer Review Required
+                            </span>
+                            {typeof analysis?.confidence === "number" && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border">
+                                Conf: {Math.round(analysis.confidence * 100)}%
+                              </span>
+                            )}
+                          </div>
                         )}
                         {(p.status === "offline" || p.status === "failed") && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
@@ -701,9 +715,19 @@ export function SubmitGrievance() {
                           <p className="font-semibold text-foreground">
                             Recommended Department:{" "}
                             <span className="text-primary">{analysis.recommended_department}</span>
+                            {analysis.additional_departments && analysis.additional_departments.length > 0 && (
+                              <span className="text-muted-foreground font-normal ml-1">
+                                (+ {analysis.additional_departments.join(", ")})
+                              </span>
+                            )}
                           </p>
                           {analysis.issue_description && (
                             <p className="text-muted-foreground leading-snug">{analysis.issue_description}</p>
+                          )}
+                          {analysis.predicted_class && (
+                            <div className="text-[10px] text-muted-foreground">
+                              Model Class: <code className="bg-muted px-1 py-0.5 rounded">{analysis.predicted_class}</code>
+                            </div>
                           )}
                           {analysis.visual_observations && analysis.visual_observations.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
@@ -718,17 +742,27 @@ export function SubmitGrievance() {
                       )}
 
                       {isUnrelated && analysis && (
-                        <p className="text-rose-700 font-medium">
-                          {analysis.citizen_message ||
-                            "This image does not contain an identifiable civic grievance. Please remove it or add written complaint details."}
-                        </p>
+                        <div className="space-y-1">
+                          <p className="text-rose-700 font-medium">
+                            {analysis.citizen_message ||
+                              "This image does not contain an identifiable civic grievance. Please remove it or add written complaint details."}
+                          </p>
+                          {analysis.review_reason && (
+                            <p className="text-[11px] text-muted-foreground">{analysis.review_reason}</p>
+                          )}
+                        </div>
                       )}
 
                       {isUncertain && analysis && (
-                        <p className="text-amber-800">
-                          {analysis.citizen_message ||
-                            "The defect in this image is unclear. Adding a text description will help officers process your grievance."}
-                        </p>
+                        <div className="space-y-1">
+                          <p className="text-amber-800">
+                            {analysis.citizen_message ||
+                              "The visual defect in this image is unclear or low confidence. An officer will manually verify your photo."}
+                          </p>
+                          {analysis.review_reason && (
+                            <p className="text-[11px] text-muted-foreground">{analysis.review_reason}</p>
+                          )}
+                        </div>
                       )}
 
                       {(p.status === "offline" || p.status === "failed") && (

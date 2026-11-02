@@ -7,6 +7,7 @@ and flags unrelated images and low-confidence predictions for human officer revi
 import io
 import json
 import logging
+import os
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -23,6 +24,11 @@ MODEL_DIR = Path(__file__).resolve().parent.parent.parent / "models"
 CHECKPOINT_PATH = MODEL_DIR / "civic_mobilenet_v3_best.pth"
 if not CHECKPOINT_PATH.exists():
     CHECKPOINT_PATH = MODEL_DIR / "civic_mobilenet_v3.pth"
+
+# Configurable confidence thresholds based on 9-class validation calibration
+# Random chance across 9 classes is 0.111. The 75th percentile of misclassifications is 0.27.
+CONFIDENCE_THRESHOLD = float(os.getenv("CV_CONFIDENCE_THRESHOLD", "0.28"))
+HIGH_CONFIDENCE_THRESHOLD = float(os.getenv("CV_HIGH_CONFIDENCE_THRESHOLD", "0.50"))
 
 # Class mappings matching the trained MobileNetV3 civic taxonomy
 CLASS_TAXONOMY = {
@@ -215,7 +221,10 @@ def predict_civic_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> Di
         "visual_observations": [],
         "observations": [],
         "confidence": None,
+        "confidence_level": "LOW",
+        "predicted_class": None,
         "human_review_required": True,
+        "review_reason": "CV model is currently unavailable; queued for manual officer review.",
         "citizen_message": "CV model is currently unavailable. Your photo will be reviewed manually by an officer.",
         "model_name": "MobileNetV3-Small-Civic",
         "model_version": "1.0.0",
@@ -227,6 +236,7 @@ def predict_civic_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> Di
             **fallback_result,
             "analysis_status": "unsupported_format",
             "citizen_message": "Unsupported file format. Please upload JPEG, PNG, or WebP photographs.",
+            "review_reason": f"Unsupported MIME format: {mime_type}.",
         }
 
     if len(image_bytes) > 5 * 1024 * 1024:
@@ -234,6 +244,7 @@ def predict_civic_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> Di
             **fallback_result,
             "analysis_status": "too_large",
             "citizen_message": "Image file exceeds the 5 MB limit. Please upload a smaller photograph.",
+            "review_reason": f"Payload size {len(image_bytes)} bytes exceeds 5 MB limit.",
         }
 
     model, class_names = get_trained_model()
@@ -252,6 +263,7 @@ def predict_civic_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> Di
                     "image_type": "uncertain",
                     "human_review_required": True,
                     "citizen_message": "The uploaded photograph is too low-resolution or indistinct to identify a civic issue.",
+                    "review_reason": f"Image dimensions ({rgb_img.width}x{rgb_img.height}) below 50x50 resolution threshold.",
                 }
             input_tensor = _TRANSFORM(rgb_img).unsqueeze(0).to(_DEVICE)
 
@@ -265,18 +277,20 @@ def predict_civic_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> Di
         pred_class = class_names[pred_idx.item()]
         class_info = CLASS_TAXONOMY.get(pred_class, CLASS_TAXONOMY["unrelated_negative"])
 
-        # Check for uncertain confidence (threshold 0.22, where random baseline across 9 classes is 0.11)
-        is_uncertain = confidence_val < 0.22
-        is_grievance = class_info["is_grievance"] and (pred_class != "unrelated_negative")
-        image_type = "unrelated" if pred_class == "unrelated_negative" else ("uncertain" if is_uncertain else "civic_issue")
-        issue_detected = is_grievance and not is_uncertain
-        detected_issue = class_info["civic_issue"] if is_grievance else None
+        # Determine calibrated confidence level
+        if confidence_val >= 0.70:
+            confidence_level = "HIGH"
+        elif confidence_val >= 0.40:
+            confidence_level = "MEDIUM"
+        else:
+            confidence_level = "LOW"
 
-        # Rejection handling for non-civic photos
+        # 1. Non-civic / unrelated negative images: Never assign a civic department
         if pred_class == "unrelated_negative":
+            is_unrelated_confident = confidence_val >= CONFIDENCE_THRESHOLD
             return {
                 "analysis_status": "analyzed",
-                "image_type": "unrelated",
+                "image_type": "unrelated" if is_unrelated_confident else "uncertain",
                 "is_grievance_related": False,
                 "issue_detected": False,
                 "detected_issue": None,
@@ -288,40 +302,57 @@ def predict_civic_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> Di
                 "visual_observations": class_info["observations"],
                 "observations": class_info["observations"],
                 "confidence": confidence_val,
-                "human_review_required": False,
+                "confidence_level": confidence_level,
+                "predicted_class": "unrelated_negative",
+                "human_review_required": not is_unrelated_confident,
+                "review_reason": (
+                    "Non-civic photograph detected. No automatic department assigned."
+                    if is_unrelated_confident
+                    else f"Ambiguous non-civic prediction ({confidence_val:.2f}); manual officer inspection required."
+                ),
                 "citizen_message": class_info["citizen_msg"],
                 "model_name": "MobileNetV3-Small-Civic",
                 "model_version": "1.0.0",
                 "inference_latency_ms": latency_ms,
             }
 
-        # Uncertain civic issue
+        # 2. Uncertain civic predictions: Low confidence predictions must NOT assert incorrect departments
+        is_uncertain = confidence_val < CONFIDENCE_THRESHOLD
         if is_uncertain:
+            civic_label = class_info.get("civic_issue") or "civic issue"
             return {
                 "analysis_status": "analyzed",
                 "image_type": "uncertain",
                 "is_grievance_related": True,
                 "issue_detected": False,
                 "detected_issue": None,
-                "issue_description": f"Tentative visual match for {class_info['civic_issue'].lower()}, but confidence is low ({confidence_val:.2f}).",
+                "issue_description": f"Tentative visual match for {civic_label.lower()}, but model confidence is low ({confidence_val:.2f} < {CONFIDENCE_THRESHOLD:.2f}).",
                 "image_description": class_info["description"],
-                "recommended_category": class_info["category"],
-                "recommended_department": class_info["department"],
-                "additional_departments": class_info["additional_departments"],
+                "recommended_category": None,
+                "recommended_department": None,
+                "additional_departments": [],
                 "visual_observations": class_info["observations"],
                 "observations": class_info["observations"],
                 "confidence": confidence_val,
+                "confidence_level": confidence_level,
+                "predicted_class": pred_class,
                 "human_review_required": True,
-                "citizen_message": "Visual evidence suggests a possible civic issue, but image clarity requires human officer verification.",
+                "review_reason": f"Low model confidence ({confidence_val:.2f} < {CONFIDENCE_THRESHOLD:.2f}) for tentative class '{pred_class}'. Queued for manual officer inspection.",
+                "citizen_message": "Visual evidence is ambiguous or indistinct. Your image has been queued for manual review by an administrative officer.",
                 "model_name": "MobileNetV3-Small-Civic",
                 "model_version": "1.0.0",
                 "inference_latency_ms": latency_ms,
             }
 
-        # Human review policy: Always require review for critical hazards (wires, deep waterlogging) or moderate confidence
+        # 3. Confident civic predictions: Correctly route to configured department(s)
         review_required = bool(
-            confidence_val < 0.60
+            confidence_val < HIGH_CONFIDENCE_THRESHOLD
             or pred_class in {"exposed_electrical_wires", "damaged_public_infrastructure", "waterlogging"}
+        )
+        review_reason = (
+            f"Moderate confidence ({confidence_val:.2f}); manual officer confirmation recommended."
+            if review_required
+            else None
         )
 
         return {
@@ -329,7 +360,7 @@ def predict_civic_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> Di
             "image_type": "civic_issue",
             "is_grievance_related": True,
             "issue_detected": True,
-            "detected_issue": detected_issue,
+            "detected_issue": class_info["civic_issue"],
             "issue_description": class_info["description"],
             "image_description": class_info["description"],
             "recommended_category": class_info["category"],
@@ -338,7 +369,10 @@ def predict_civic_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> Di
             "visual_observations": class_info["observations"],
             "observations": class_info["observations"],
             "confidence": confidence_val,
+            "confidence_level": confidence_level,
+            "predicted_class": pred_class,
             "human_review_required": review_required,
+            "review_reason": review_reason,
             "citizen_message": class_info["citizen_msg"],
             "model_name": "MobileNetV3-Small-Civic",
             "model_version": "1.0.0",
@@ -351,4 +385,5 @@ def predict_civic_image(image_bytes: bytes, mime_type: str = "image/jpeg") -> Di
             **fallback_result,
             "analysis_status": "failed",
             "citizen_message": "An error occurred during local image analysis. The photo will be preserved for officer review.",
+            "review_reason": f"Inference exception: {str(e)}",
         }
